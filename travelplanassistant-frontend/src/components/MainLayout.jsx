@@ -10,7 +10,10 @@ const MainLayout = () => {
   const getCurrentValue = () => {
     if (location.pathname.includes('/discovery')) return 0;
     if (location.pathname.includes('/my-plans')) return 1;
-    if (location.pathname.includes('/profile')) return 2;
+    if (
+      location.pathname === '/profile' ||
+      location.pathname === '/edit-profile'
+    ) return 2;
     return 0;
   };
 

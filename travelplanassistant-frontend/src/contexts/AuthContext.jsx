@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authAPI } from '../services/api';
 import { STORAGE_KEYS } from '../config/config';
 
@@ -19,23 +19,30 @@ export const AuthProvider = ({ children }) => {
 
   // Check if user is already logged in on app start
   useEffect(() => {
-    const checkAuthStatus = async () => {
-      const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-      if (token) {
-        try {
-          const userData = await authAPI.getCurrentUser();
-          setUser(userData);
-          setIsAuthenticated(true);
-        } catch (error) {
-          console.error('Failed to get current user:', error);
-          // Clear invalid token
-          localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
-        }
-      }
-      setLoading(false);
-    };
-
     checkAuthStatus();
+    // eslint-disable-next-line
+  }, []);
+
+  // Expose checkAuthStatus for manual reloads (memoized to prevent unnecessary re-renders)
+  const checkAuthStatus = useCallback(async () => {
+    setLoading(true);
+    const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+    if (token) {
+      try {
+        const userData = await authAPI.getCurrentUser();
+        setUser(userData);
+        setIsAuthenticated(true);
+      } catch (error) {
+        console.error('Failed to get current user:', error);
+        localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+        setUser(null);
+        setIsAuthenticated(false);
+      }
+    } else {
+      setUser(null);
+      setIsAuthenticated(false);
+    }
+    setLoading(false);
   }, []);
 
   const login = async (email, password) => {
@@ -49,13 +56,17 @@ export const AuthProvider = ({ children }) => {
       setUser({
         id: response.userId || response.id,
         email: response.email,
-        firstName: response.fullName?.split(' ')[0] || response.firstName,
-        lastName: response.fullName?.split(' ').slice(1).join(' ') || response.lastName,
-        username: response.username,
-        avatar: response.avatar || 'https://via.placeholder.com/150',
+        firstName: response.firstName,
+        lastName: response.lastName,
+        gender: response.gender,
         birthYear: response.birthYear,
         birthMonth: response.birthMonth,
+        phoneNumber: response.phoneNumber,
+        language: response.language,
         country: response.country,
+        city: response.city,
+        profilePicture: response.profilePicture || 'https://via.placeholder.com/150',
+        bio: response.bio,
         createdAt: response.createdAt
       });
       
@@ -81,13 +92,17 @@ export const AuthProvider = ({ children }) => {
       setUser({
         id: response.userId || response.id,
         email: response.email,
-        firstName: response.fullName?.split(' ')[0] || response.firstName,
-        lastName: response.fullName?.split(' ').slice(1).join(' ') || response.lastName,
-        username: response.username,
-        avatar: response.avatar || 'https://via.placeholder.com/150',
+        firstName: response.firstName,
+        lastName: response.lastName,
+        gender: response.gender,
         birthYear: response.birthYear,
         birthMonth: response.birthMonth,
+        phoneNumber: response.phoneNumber,
+        language: response.language,
         country: response.country,
+        city: response.city,
+        profilePicture: response.profilePicture || 'https://via.placeholder.com/150',
+        bio: response.bio,
         createdAt: response.createdAt
       });
       
@@ -122,7 +137,8 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
-    updateUser
+    updateUser,
+    reloadUser: checkAuthStatus
   };
 
   if (loading) {

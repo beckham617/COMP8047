@@ -1,13 +1,13 @@
 // API Configuration
 export const API_CONFIG = {
-  BASE_URL: process.env.REACT_APP_API_URL || 'http://localhost:8080/api',
+  BASE_URL: import.meta.env.VITE_API_URL || 'http://localhost:8080/api',
   TIMEOUT: 10000, // 10 seconds
   RETRY_ATTEMPTS: 3
 };
 
 // WebSocket Configuration
 export const WS_CONFIG = {
-  BASE_URL: process.env.REACT_APP_WS_URL || 'ws://localhost:8080/api/ws',
+  BASE_URL: import.meta.env.VITE_WS_URL || 'ws://localhost:8080/api/ws',
   RECONNECT_INTERVAL: 5000, // 5 seconds
   MAX_RECONNECT_ATTEMPTS: 5
 };
@@ -75,6 +75,8 @@ export const SUCCESS_MESSAGES = {
   PROFILE_UPDATED: 'Profile updated successfully!'
 };
 
+export const DEFAULT_PLAN_COVER_IMAGE = "https://images.unsplash.com/photo-1469474968028-56623f02e42e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
+
 export default {
   API_CONFIG,
   WS_CONFIG,
@@ -82,5 +84,6 @@ export default {
   FEATURES,
   STORAGE_KEYS,
   ERROR_MESSAGES,
-  SUCCESS_MESSAGES
+  SUCCESS_MESSAGES,
+  DEFAULT_PLAN_COVER_IMAGE
 }; 

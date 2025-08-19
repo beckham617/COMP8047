@@ -112,6 +112,16 @@ export const travelPlansAPI = {
     return apiRequest(endpoint);
   },
 
+  // Get current travel plans
+  getCurrentPlans: async (filters = {}) => {
+    return apiRequest('/travel-plans/current');
+  },
+
+  // Get history travel plans
+  getHistoryPlans: async (filters = {}) => {
+    return apiRequest('/travel-plans/history');
+  },
+
   // Get user's travel plans
   getUserPlans: async () => {
     return apiRequest('/travel-plans/my-plans');
@@ -119,6 +129,11 @@ export const travelPlansAPI = {
 
   // Get specific travel plan
   getPlan: async (planId) => {
+    return apiRequest(`/travel-plans/${planId}`);
+  },
+
+  // Get specific travel plan details (backend)
+  getPlanDetails: async (planId) => {
     return apiRequest(`/travel-plans/${planId}`);
   },
 
@@ -274,6 +289,33 @@ export const usersAPI = {
       method: 'PUT',
       body: JSON.stringify(userData)
     });
+  },
+
+  // Upload profile picture
+  uploadProfilePicture: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const token = getAuthToken();
+    const response = await fetch(`${API_CONFIG.BASE_URL}/files/upload`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Failed to upload profile picture');
+    }
+    
+    return response.json();
+  },
+
+  // Get profile picture by path
+  getProfilePicture: (filePath) => {
+    return `${API_CONFIG.BASE_URL}/files/profile-pictures/${encodeURIComponent(filePath)}`;
   },
 
   // Search users

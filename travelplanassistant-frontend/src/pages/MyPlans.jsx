@@ -1,68 +1,49 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { usersAPI, travelPlansAPI } from '../services/api';
 import {
   Box,
   Container,
   Typography,
-  Tabs,
-  Tab,
   Card,
   CardContent,
   CardMedia,
   Avatar,
   Chip,
-  Button,
-  Grid
+  Grid,
+  Paper,
+  Fab,
+  Tabs,
+  Tab,
+  Tooltip
 } from '@mui/material';
 import {
   Add
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
+import backgroundImage from '../assets/background.avif';
+import PageHeader from '../components/PageHeader';
+import PageContainer from '../components/PageContainer';
 
 const MyPlans = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState(0);
-  const [plans, setPlans] = useState([]);
+  // const [plans, setPlans] = useState([]);
   const [currentPlans, setCurrentPlans] = useState([]);
   const [historyPlans, setHistoryPlans] = useState([]);
 
   useEffect(() => {
-    // Load plans from localStorage
-    const storedPlans = JSON.parse(localStorage.getItem('plans') || '[]');
-    setPlans(storedPlans);
+    loadPlans();
   }, []);
 
-  useEffect(() => {
-    if (!user) return;
-
-    // Filter current plans (new or in_progress with active user involvement)
-    const current = plans.filter(plan => {
-      const userPlan = plan.members.find(member => member.userId === user.id);
-      if (!userPlan) return false;
-      
-      // Only show in Current if plan is active AND user has an active status
-      const isActivePlan = ['new', 'in_progress'].includes(plan.planStatus);
-      const isActiveUserStatus = ['owned', 'applied', 'applied_accepted', 'invited', 'invited_accepted'].includes(userPlan.userPlanStatus);
-      
-      return isActivePlan && isActiveUserStatus;
-    });
-
-    // Filter history plans (completed, cancelled, or inactive user statuses)
-    const history = plans.filter(plan => {
-      const userPlan = plan.members.find(member => member.userId === user.id);
-      if (!userPlan) return false;
-      
-      // Show in History if plan is completed/cancelled OR user has inactive status
-      const isCompletedPlan = plan.planStatus === 'completed' || plan.planStatus === 'cancelled';
-      const isInactiveUserStatus = ['applied_cancelled', 'applied_refused', 'invited_refused'].includes(userPlan.userPlanStatus);
-      
-      return isCompletedPlan || isInactiveUserStatus;
-    });
-
-    setCurrentPlans(current);
-    setHistoryPlans(history);
-  }, [plans, user]);
+  const loadPlans = useCallback(async ()  => {
+    const currentPlans = await travelPlansAPI.getCurrentPlans() || JSON.parse( '[]');
+    console.log(JSON.stringify(currentPlans));
+    const historyPlans = await travelPlansAPI.getHistoryPlans() || JSON.parse( '[]');
+    setCurrentPlans(currentPlans);
+    setHistoryPlans(historyPlans);
+  }, []);
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
@@ -115,7 +96,7 @@ const MyPlans = () => {
   };
 
   const renderPlanCard = (plan) => {
-    const userPlan = plan.members.find(member => member.userId === user?.id);
+    // const userPlan = plan.userPlanStatus.find(member => member.userId === user?.id);
     
     return (
       <Card
@@ -136,8 +117,11 @@ const MyPlans = () => {
         <CardMedia
           component="img"
           height="200"
-          image={plan.coverImage || 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'}
+          image={(Array.isArray(plan.images) && plan.images.length > 0)
+            ? usersAPI.getProfilePicture(plan.images[0])
+            : 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'}
           alt={plan.title}
+          sx={{ width: '100%', height: 200, objectFit: 'cover', objectPosition: 'center' }}
         />
         <CardContent sx={{ flexGrow: 1, position: 'relative' }}>
           <Typography variant="h6" component="h2" gutterBottom>
@@ -150,27 +134,32 @@ const MyPlans = () => {
 
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
             <Avatar
-              src={plan.owner.avatar}
+              // src={plan.ownerAvatar}
+              src={
+                plan.ownerAvatar 
+                  ? usersAPI.getProfilePicture(plan.ownerAvatar) 
+                  : (plan.ownerAvatar || 'https://via.placeholder.com/150')
+              }
               sx={{ width: 32, height: 32, mr: 1 }}
             />
             <Typography variant="body2" color="text.secondary">
-              {plan.owner.firstName} {plan.owner.lastName}
+              {plan.ownerName}
             </Typography>
           </Box>
 
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Chip
-              label={plan.planStatus.replace('_', ' ')}
-              color={getStatusColor(plan.planStatus)}
+              label={plan.userPlanStatus.replace('_', ' ')}
+              color={getStatusColor(plan.userPlanStatus)}
               size="small"
             />
-            {userPlan && (
+            {/* {userPlan && (
               <Chip
                 label={userPlan.userPlanStatus.replace('_', ' ')}
                 color={getUserPlanStatusColor(userPlan.userPlanStatus)}
                 size="small"
               />
-            )}
+            )} */}
           </Box>
         </CardContent>
       </Card>
@@ -178,47 +167,40 @@ const MyPlans = () => {
   };
 
   return (
-    <Box sx={{ pb: 8 }}>
-      {/* Header */}
-      <Box
-        sx={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          color: 'white',
-          py: 3,
-          px: 2
-        }}
-      >
-        <Container maxWidth="lg">
-          <Typography variant="h5" component="h1" sx={{ fontWeight: 'bold', mb: 2 }}>
-            My Plans
-          </Typography>
-          
-          <Tabs
-            value={activeTab}
-            onChange={handleTabChange}
-            sx={{
-              '& .MuiTab-root': {
-                color: 'rgba(255, 255, 255, 0.7)',
-                '&.Mui-selected': {
-                  color: 'white',
-                },
+    <PageContainer>
+      <PageHeader title="My Plans">
+        <Tabs
+          value={activeTab}
+          onChange={handleTabChange}
+          sx={{
+            '& .MuiTab-root': {
+              color: 'rgba(255, 255, 255, 0.6)',
+              '&.Mui-selected': {
+                color: 'white',
               },
-              '& .MuiTabs-indicator': {
-                backgroundColor: 'white',
-              },
-            }}
-          >
-            <Tab label="Current" />
-            <Tab label="History" />
-          </Tabs>
-        </Container>
-      </Box>
+            },
+            '& .MuiTabs-indicator': {
+              backgroundColor: 'white',
+            },
+          }}
+        >
+          <Tab label="Current" />
+          <Tab label="History" />
+        </Tabs>
+      </PageHeader>
 
       {/* Content */}
-      <Container maxWidth="lg" sx={{ py: 3 }}>
+      <Container maxWidth="md" sx={{ py: 4 }}>
+        <Paper elevation={3} sx={{ 
+              p: 4,
+              borderRadius: 3,
+              position: 'relative',
+              backgroundColor: 'transparent',
+              zIndex: 1,
+            }}>
         {activeTab === 0 ? (
           // Current Tab
-          <Box>
+          <Box sx={{ textAlign: 'center', mb: 4 }}>
             {currentPlans.length === 0 ? (
               <Box sx={{ textAlign: 'center', py: 8 }}>
                 <Typography variant="h6" color="text.secondary" gutterBottom>
@@ -227,19 +209,24 @@ const MyPlans = () => {
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                   Create a new plan to get started!
                 </Typography>
-                <Button
-                  variant="contained"
-                  startIcon={<Add />}
-                  onClick={handleCreatePlan}
-                  sx={{
-                    backgroundColor: '#1976d2',
-                    '&:hover': {
-                      backgroundColor: '#1565c0',
-                    }
-                  }}
-                >
-                  NEW
-                </Button>
+                <Tooltip title="Create Plan" arrow>
+                  <Fab
+                    color="primary"
+                    aria-label="create plan"
+                    onClick={handleCreatePlan}
+                    sx={{
+                      position: 'fixed',
+                      bottom: 120,
+                      right: 24,
+                      backgroundColor: '#f43d65',
+                      '&:hover': {
+                        backgroundColor: '#f297ab',
+                      }
+                    }}
+                  >
+                    <Add />
+                  </Fab>
+                </Tooltip>
               </Box>
             ) : (
               <Grid container spacing={3}>
@@ -249,7 +236,7 @@ const MyPlans = () => {
           </Box>
         ) : (
           // History Tab
-          <Box>
+          <Box sx={{ textAlign: 'center', mb: 4 }}>
             {historyPlans.length === 0 ? (
               <Box sx={{ textAlign: 'center', py: 8 }}>
                 <Typography variant="h6" color="text.secondary" gutterBottom>
@@ -266,8 +253,10 @@ const MyPlans = () => {
             )}
           </Box>
         )}
+        
+        </Paper>
       </Container>
-    </Box>
+    </PageContainer>
   );
 };
 

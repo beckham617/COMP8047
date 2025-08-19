@@ -23,10 +23,10 @@ import EditProfile from './pages/EditProfile';
 const theme = createTheme({
   palette: {
     primary: {
-      main: '#1976d2',
+      main: '#F43D65',
     },
     secondary: {
-      main: '#dc004e',
+      main: '#1976d2',
     },
   },
 });

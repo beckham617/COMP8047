@@ -7,7 +7,7 @@ A comprehensive React-based travel planning application that allows users to dis
 ### Authentication
 - User registration with comprehensive form validation
 - User login with email/password
-- Profile management with avatar upload
+- Profile management with profile picture upload
 - Secure authentication context
 
 ### Plan Management
@@ -69,7 +69,7 @@ npm run dev
 
 ### First Time Setup
 1. Click "Register" on the welcome page
-2. Fill in your profile information and upload an avatar
+2. Fill in your profile information and upload an profile picture
 3. Complete registration to be redirected to login
 4. Log in with your credentials
 

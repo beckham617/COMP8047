@@ -11,7 +11,8 @@ import {
   ListItem,
   ListItemText,
   Divider,
-  Fab
+  Fab,
+  Tooltip
 } from '@mui/material';
 import {
   ArrowBack,
@@ -139,22 +140,24 @@ const SharedExpense = () => {
       </Container>
 
       {/* Floating Action Button */}
-      <Fab
-        color="primary"
-        aria-label="add expense"
-        onClick={() => navigate(`/create-expense/${planId}`)}
-        sx={{
-          position: 'fixed',
-          bottom: 80,
-          right: 16,
-          backgroundColor: '#1976d2',
-          '&:hover': {
-            backgroundColor: '#1565c0',
-          }
-        }}
-      >
-        <Add />
-      </Fab>
+      <Tooltip title="Create Expense" arrow>
+        <Fab
+          color="primary"
+          aria-label="add expense"
+          onClick={() => navigate(`/create-expense/${planId}`)}
+          sx={{
+            position: 'fixed',
+            bottom: 80,
+            right: 16,
+            backgroundColor: '#1976d2',
+            '&:hover': {
+              backgroundColor: '#1565c0',
+            }
+          }}
+        >
+          <Add />
+        </Fab>
+      </Tooltip>
     </Box>
   );
 };

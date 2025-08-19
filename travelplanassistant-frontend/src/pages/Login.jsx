@@ -14,6 +14,9 @@ import {
 } from '@mui/material';
 import { ArrowBack } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
+import backgroundImage from '../assets/background.avif';
+import PageHeader from '../components/PageHeader';
+import PageContainer from '../components/PageContainer';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -51,47 +54,27 @@ const Login = () => {
     }
   });
 
+  const handleBack = () => {
+    navigate('/');
+  };
+
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        display: 'flex',
-        alignItems: 'center',
-        py: 4
-      }}
-    >
+    <PageContainer>
+      <PageHeader title="Log In" onBack={handleBack}>
+        <Typography variant="subtitle1" sx={{ mt: 3 }}>
+          Welcome back! Please log in to continue
+        </Typography>
+      </PageHeader>
       <Container maxWidth="sm">
         <Paper
           elevation={8}
           sx={{
             p: 4,
             borderRadius: 3,
-            position: 'relative'
+            position: 'relative',
+            backgroundColor: 'transparent',
           }}
         >
-          <Button
-            onClick={() => navigate('/')}
-            startIcon={<ArrowBack />}
-            sx={{
-              position: 'absolute',
-              top: 16,
-              left: 16,
-              color: '#666'
-            }}
-          >
-            Back
-          </Button>
-
-          <Typography
-            variant="h4"
-            component="h1"
-            align="center"
-            gutterBottom
-            sx={{ mb: 4, color: '#1976d2', fontWeight: 'bold' }}
-          >
-            Welcome Back
-          </Typography>
 
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>
@@ -100,9 +83,15 @@ const Login = () => {
           )}
 
           <Box component="form" onSubmit={formik.handleSubmit}>
-            <Grid container spacing={3}>
-              {/* Email */}
-              <Grid item xs={12}>
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center',
+              maxWidth: 400,
+              mx: 'auto'
+            }}>
+              <Box sx={{ width: '100%', mb: 3 }}>
+                {/* Email */}
                 <TextField
                   fullWidth
                   name="email"
@@ -113,11 +102,10 @@ const Login = () => {
                   onBlur={formik.handleBlur}
                   error={formik.touched.email && Boolean(formik.errors.email)}
                   helperText={formik.touched.email && formik.errors.email}
+                  sx={{ mb: 3 }}
                 />
-              </Grid>
 
-              {/* Password */}
-              <Grid item xs={12}>
+                {/* Password */}
                 <TextField
                   fullWidth
                   name="password"
@@ -128,33 +116,34 @@ const Login = () => {
                   onBlur={formik.handleBlur}
                   error={formik.touched.password && Boolean(formik.errors.password)}
                   helperText={formik.touched.password && formik.errors.password}
+                  sx={{ mb: 3 }}
                 />
-              </Grid>
+              </Box>
 
               {/* Submit Button */}
-              <Grid item xs={12}>
+              <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-end' }}>
                 <Button
                   type="submit"
-                  fullWidth
+                  sx={{
+                    py: 1.5,
+                    px: 4,
+                    fontSize: '1.1rem',
+                    fontWeight: 'bold',
+                    backgroundColor: '#f43d65',
+                    '&:hover': {
+                      backgroundColor: '#f297ab',
+                    }
+                  }}
                   variant="contained"
                   size="large"
                   disabled={formik.isSubmitting}
-                  sx={{
-                    py: 1.5,
-                    fontSize: '1.1rem',
-                    fontWeight: 'bold',
-                    backgroundColor: '#1976d2',
-                    '&:hover': {
-                      backgroundColor: '#1565c0',
-                    }
-                  }}
                 >
                   {formik.isSubmitting ? 'Logging In...' : 'Log In'}
                 </Button>
-              </Grid>
+              </Box>
 
               {/* Register Link */}
-              <Grid item xs={12}>
+              <Box sx={{ textAlign: 'center', mt: 3 }}>
                 <Box sx={{ textAlign: 'center' }}>
                   <Typography variant="body2" color="text.secondary">
                     Don't have an account?{' '}
@@ -173,12 +162,12 @@ const Login = () => {
                     </Button>
                   </Typography>
                 </Box>
-              </Grid>
-            </Grid>
+              </Box>
+            </Box>
           </Box>
         </Paper>
       </Container>
-    </Box>
+    </PageContainer>
   );
 };
 

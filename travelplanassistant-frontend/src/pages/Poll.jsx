@@ -15,7 +15,8 @@ import {
   FormControlLabel,
   FormControl,
   Divider,
-  Fab
+  Fab,
+  Tooltip
 } from '@mui/material';
 import {
   ArrowBack,
@@ -215,22 +216,24 @@ const Poll = () => {
       </Container>
 
       {/* Floating Action Button */}
-      <Fab
-        color="primary"
-        aria-label="create poll"
-        onClick={() => navigate(`/create-poll/${planId}`)}
-        sx={{
-          position: 'fixed',
-          bottom: 80,
-          right: 16,
-          backgroundColor: '#1976d2',
-          '&:hover': {
-            backgroundColor: '#1565c0',
-          }
-        }}
-      >
-        <Add />
-      </Fab>
+      <Tooltip title="Create Poll" arrow>
+        <Fab
+          color="primary"
+          aria-label="create poll"
+          onClick={() => navigate(`/create-poll/${planId}`)}
+          sx={{
+            position: 'fixed',
+            bottom: 80,
+            right: 16,
+            backgroundColor: '#1976d2',
+            '&:hover': {
+              backgroundColor: '#1565c0',
+            }
+          }}
+        >
+          <Add />
+        </Fab>
+      </Tooltip>
     </Box>
   );
 };

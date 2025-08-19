@@ -4,22 +4,24 @@ import {
   Box,
   Container,
   Typography,
-  TextField,
-  InputAdornment,
-  Grid,
   Card,
   CardContent,
   CardMedia,
   Avatar,
   Chip,
-  IconButton,
-  Fab
+  Grid,
+  Fab,
+  TextField,
+  InputAdornment,
+  Paper
 } from '@mui/material';
 import {
-  Search,
-  Add
+  Add,
+  Search
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
+import PageHeader from '../components/PageHeader';
+import PageContainer from '../components/PageContainer';
 
 const Discovery = () => {
   const navigate = useNavigate();
@@ -74,56 +76,49 @@ const Discovery = () => {
   };
 
   return (
-    <Box sx={{ pb: 8 }}>
-      {/* Header */}
-      <Box
-        sx={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          color: 'white',
-          py: 3,
-          px: 2
-        }}
-      >
-        <Container maxWidth="lg">
-          <Typography variant="h5" component="h1" sx={{ fontWeight: 'bold', mb: 2 }}>
-            Discovery
-          </Typography>
-          
-          <TextField
-            fullWidth
-            placeholder="Search plans..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Search sx={{ color: 'rgba(255, 255, 255, 0.7)' }} />
-                </InputAdornment>
-              ),
-              sx: {
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                borderRadius: 2,
-                '& .MuiOutlinedInput-notchedOutline': {
-                  borderColor: 'rgba(255, 255, 255, 0.3)',
+    <PageContainer>
+      <PageHeader title="Discovery">
+        <TextField
+          fullWidth
+          placeholder="Search plans..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Search sx={{ color: 'rgba(255, 255, 255, 0.7)' }} />
+              </InputAdornment>
+            ),
+            sx: {
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              borderRadius: 2,
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderColor: 'rgba(255, 255, 255, 0.3)',
+              },
+              '&:hover .MuiOutlinedInput-notchedOutline': {
+                borderColor: 'rgba(255, 255, 255, 0.5)',
+              },
+              '& .MuiInputBase-input': {
+                color: 'white',
+                '&::placeholder': {
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  opacity: 1,
                 },
-                '&:hover .MuiOutlinedInput-notchedOutline': {
-                  borderColor: 'rgba(255, 255, 255, 0.5)',
-                },
-                '& .MuiInputBase-input': {
-                  color: 'white',
-                  '&::placeholder': {
-                    color: 'rgba(255, 255, 255, 0.7)',
-                    opacity: 1,
-                  },
-                },
-              }
-            }}
-          />
-        </Container>
-      </Box>
+              },
+            }
+          }}
+        />
+      </PageHeader>
 
       {/* Plans Grid */}
-      <Container maxWidth="lg" sx={{ py: 3 }}>
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Paper elevation={3} sx={{ 
+              p: 4,
+              borderRadius: 3,
+              position: 'relative',
+              backgroundColor: 'transparent',
+              zIndex: 1,
+            }}>
         {filteredPlans.length === 0 ? (
           <Box sx={{ textAlign: 'center', py: 8 }}>
             <Typography variant="h6" color="text.secondary" gutterBottom>
@@ -168,7 +163,7 @@ const Discovery = () => {
 
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                       <Avatar
-                        src={plan.owner.avatar}
+                        src={plan.owner.profilePicture}
                         sx={{ width: 32, height: 32, mr: 1 }}
                       />
                       <Typography variant="body2" color="text.secondary">
@@ -192,26 +187,9 @@ const Discovery = () => {
             ))}
           </Grid>
         )}
+        </Paper>
       </Container>
-
-      {/* Floating Action Button */}
-      <Fab
-        color="primary"
-        aria-label="create plan"
-        onClick={handleCreatePlan}
-        sx={{
-          position: 'fixed',
-          bottom: 80,
-          right: 16,
-          backgroundColor: '#1976d2',
-          '&:hover': {
-            backgroundColor: '#1565c0',
-          }
-        }}
-      >
-        <Add />
-      </Fab>
-    </Box>
+    </PageContainer>
   );
 };
 

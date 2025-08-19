@@ -76,7 +76,7 @@ const UserProfile = () => {
           {/* Avatar and Basic Info */}
           <Box sx={{ textAlign: 'center', mb: 4 }}>
             <Avatar
-              src={user.avatar}
+              src={user.profilePicture}
               sx={{
                 width: 120,
                 height: 120,

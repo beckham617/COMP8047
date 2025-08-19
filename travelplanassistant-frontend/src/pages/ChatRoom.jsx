@@ -48,7 +48,7 @@ const ChatRoom = () => {
       text: newMessage.trim(),
       userId: user.id,
       userName: `${user.firstName} ${user.lastName}`,
-      userAvatar: user.avatar,
+      userAvatar: user.profilePicture,
       timestamp: new Date().toISOString()
     };
 
