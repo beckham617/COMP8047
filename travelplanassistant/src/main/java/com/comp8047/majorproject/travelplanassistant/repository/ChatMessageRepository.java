@@ -20,11 +20,11 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
     // Find messages for a travel plan after a specific time
     List<ChatMessage> findByTravelPlanAndCreatedAtAfterOrderByCreatedAtAsc(TravelPlan travelPlan, LocalDateTime after);
     
-    // Find messages by user
-    List<ChatMessage> findByUserOrderByCreatedAtDesc(User user);
+    // Find messages by sender
+    List<ChatMessage> findBySenderOrderByCreatedAtDesc(User sender);
     
-    // Find messages by user and travel plan
-    List<ChatMessage> findByUserAndTravelPlanOrderByCreatedAtAsc(User user, TravelPlan travelPlan);
+    // Find messages by sender and travel plan
+    List<ChatMessage> findBySenderAndTravelPlanOrderByCreatedAtAsc(User sender, TravelPlan travelPlan);
     
     // Find recent messages for a travel plan (last N messages)
     @Query("SELECT cm FROM ChatMessage cm WHERE cm.travelPlan = :travelPlan ORDER BY cm.createdAt DESC")
@@ -40,6 +40,6 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
     // Delete all messages for a travel plan
     void deleteByTravelPlan(TravelPlan travelPlan);
     
-    // Delete all messages by a user
-    void deleteByUser(User user);
+    // Delete all messages by a sender
+    void deleteBySender(User sender);
 } 

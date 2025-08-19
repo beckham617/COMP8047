@@ -10,6 +10,8 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.Period;
 import java.util.Collection;
 import java.util.List;
 
@@ -43,19 +45,19 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private Gender gender;
     
-    @NotNull(message = "Age is required")
-    @Column(nullable = false)
-    private Integer age;
+    @NotNull(message = "Birth year is required")
+    @Column(name = "birth_year", nullable = false)
+    private Integer birthYear;
+    
+    @NotNull(message = "Birth month is required")
+    @Column(name = "birth_month", nullable = false)
+    private Integer birthMonth;
     
     @Column(name = "phone_number")
     private String phoneNumber;
     
-    @NotBlank(message = "Main language is required")
-    @Column(name = "main_language", nullable = false)
-    private String mainLanguage;
-    
-    @Column(name = "additional_languages")
-    private String additionalLanguages;
+    @Column(name = "language", nullable = false)
+    private String language;
     
     @Column(nullable = false)
     private String city;
@@ -91,15 +93,16 @@ public class User implements UserDetails {
     }
     
     public User(String email, String password, String firstName, String lastName, 
-                Gender gender, Integer age, String mainLanguage, String city, String country) {
+                Gender gender, Integer birthYear, Integer birthMonth, String language, String city, String country) {
         this();
         this.email = email;
         this.password = password;
         this.firstName = firstName;
         this.lastName = lastName;
         this.gender = gender;
-        this.age = age;
-        this.mainLanguage = mainLanguage;
+        this.birthYear = birthYear;
+        this.birthMonth = birthMonth;
+        this.language = language;
         this.city = city;
         this.country = country;
     }
@@ -184,12 +187,20 @@ public class User implements UserDetails {
         this.gender = gender;
     }
     
-    public Integer getAge() {
-        return age;
+    public Integer getBirthYear() {
+        return birthYear;
     }
     
-    public void setAge(Integer age) {
-        this.age = age;
+    public void setBirthYear(Integer birthYear) {
+        this.birthYear = birthYear;
+    }
+    
+    public Integer getBirthMonth() {
+        return birthMonth;
+    }
+    
+    public void setBirthMonth(Integer birthMonth) {
+        this.birthMonth = birthMonth;
     }
     
     public String getPhoneNumber() {
@@ -200,20 +211,12 @@ public class User implements UserDetails {
         this.phoneNumber = phoneNumber;
     }
     
-    public String getMainLanguage() {
-        return mainLanguage;
+    public String getLanguage() {
+        return language;
     }
     
-    public void setMainLanguage(String mainLanguage) {
-        this.mainLanguage = mainLanguage;
-    }
-    
-    public String getAdditionalLanguages() {
-        return additionalLanguages;
-    }
-    
-    public void setAdditionalLanguages(String additionalLanguages) {
-        this.additionalLanguages = additionalLanguages;
+    public void setLanguage(String language) {
+        this.language = language;
     }
     
     public String getCity() {
@@ -291,6 +294,20 @@ public class User implements UserDetails {
     // Helper methods
     public String getFullName() {
         return firstName + " " + lastName;
+    }
+    
+    /**
+     * Calculate age from birth year and month
+     */
+    public Integer getAge() {
+        if (birthYear == null || birthMonth == null) {
+            return null;
+        }
+        
+        LocalDate birthDate = LocalDate.of(birthYear, birthMonth, 1);
+        LocalDate currentDate = LocalDate.now();
+        Period period = Period.between(birthDate, currentDate);
+        return period.getYears();
     }
     
     @PreUpdate

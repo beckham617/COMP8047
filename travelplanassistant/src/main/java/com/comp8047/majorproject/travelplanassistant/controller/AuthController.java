@@ -1,8 +1,8 @@
 package com.comp8047.majorproject.travelplanassistant.controller;
 
 import com.comp8047.majorproject.travelplanassistant.dto.AuthRequest;
-import com.comp8047.majorproject.travelplanassistant.dto.AuthResponse;
 import com.comp8047.majorproject.travelplanassistant.dto.RegisterRequest;
+import com.comp8047.majorproject.travelplanassistant.dto.UserResponse;
 import com.comp8047.majorproject.travelplanassistant.entity.User;
 import com.comp8047.majorproject.travelplanassistant.security.JwtTokenUtil;
 import com.comp8047.majorproject.travelplanassistant.service.UserService;
@@ -31,26 +31,23 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
+    public ResponseEntity<UserResponse> register(@Valid @RequestBody RegisterRequest request) {
         User user = userService.registerUser(request);
         String token = jwtTokenUtil.generateToken(user);
-        
-        return ResponseEntity.ok(new AuthResponse(token, user.getEmail(), user.getFullName()));
+        return ResponseEntity.ok(new UserResponse(user, token));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody AuthRequest request) {
+    public ResponseEntity<UserResponse> login(@Valid @RequestBody AuthRequest request) {
         Authentication authentication = authenticationManager.authenticate(
             new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
-        
         User user = (User) authentication.getPrincipal();
+        System.out.println("user:" + user.getProfilePicture());
         String token = jwtTokenUtil.generateToken(user);
-        
         // Update last login time
         userService.updateLastLogin(user);
-        
-        return ResponseEntity.ok(new AuthResponse(token, user.getEmail(), user.getFullName()));
+        return ResponseEntity.ok(new UserResponse(user, token));
     }
 
     @GetMapping("/me")

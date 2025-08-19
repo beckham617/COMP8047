@@ -32,10 +32,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
         
-        // Skip JWT processing for auth endpoints
+        // Skip JWT processing for auth endpoints and file serving
         String requestURI = request.getRequestURI();
-        if (requestURI.startsWith("/auth/register") || 
-            requestURI.startsWith("/auth/login")) {
+        System.out.println("requestURI = " + requestURI);
+        if (requestURI.startsWith("/api/auth/register") || 
+            requestURI.startsWith("/api/auth/login") ||
+            requestURI.startsWith("/api/files/")) {
             filterChain.doFilter(request, response);
             return;
         }

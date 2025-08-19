@@ -17,25 +17,25 @@ public interface PollRepository extends JpaRepository<Poll, Long> {
     List<Poll> findByTravelPlanOrderByCreatedAtDesc(TravelPlan travelPlan);
     
     // Find polls by creator
-    List<Poll> findByCreatorOrderByCreatedAtDesc(User creator);
+    List<Poll> findByCreatedByOrderByCreatedAtDesc(User createdBy);
     
     // Find polls by travel plan and creator
-    List<Poll> findByTravelPlanAndCreatorOrderByCreatedAtDesc(TravelPlan travelPlan, User creator);
+    List<Poll> findByTravelPlanAndCreatedByOrderByCreatedAtDesc(TravelPlan travelPlan, User createdBy);
     
     // Find active polls for a travel plan
-    @Query("SELECT p FROM Poll p WHERE p.travelPlan = :travelPlan AND p.isActive = true ORDER BY p.createdAt DESC")
+    @Query("SELECT p FROM Poll p WHERE p.travelPlan = :travelPlan AND p.status = 'ACTIVE' ORDER BY p.createdAt DESC")
     List<Poll> findActivePollsByTravelPlan(@Param("travelPlan") TravelPlan travelPlan);
     
     // Count polls for a travel plan
     long countByTravelPlan(TravelPlan travelPlan);
     
     // Count active polls for a travel plan
-    @Query("SELECT COUNT(p) FROM Poll p WHERE p.travelPlan = :travelPlan AND p.isActive = true")
+    @Query("SELECT COUNT(p) FROM Poll p WHERE p.travelPlan = :travelPlan AND p.status = 'ACTIVE'")
     long countActivePollsByTravelPlan(@Param("travelPlan") TravelPlan travelPlan);
     
     // Delete all polls for a travel plan
     void deleteByTravelPlan(TravelPlan travelPlan);
     
     // Delete all polls by a user
-    void deleteByCreator(User creator);
+    void deleteByCreatedBy(User createdBy);
 } 

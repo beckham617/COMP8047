@@ -84,8 +84,8 @@ public interface UserPlanStatusRepository extends JpaRepository<UserPlanStatus, 
     /**
      * Find user plan statuses by user and travel plan status
      */
-    @Query("SELECT ups FROM UserPlanStatus ups WHERE ups.user = :user AND ups.travelPlan.planStatus = :planStatus")
-    List<UserPlanStatus> findByUserAndTravelPlanStatus(@Param("user") User user, @Param("planStatus") TravelPlan.PlanStatus planStatus);
+    @Query("SELECT ups FROM UserPlanStatus ups WHERE ups.user = :user AND ups.travelPlan.status = :status")
+    List<UserPlanStatus> findByUserAndTravelPlanStatus(@Param("user") User user, @Param("status") TravelPlan.Status status);
     
     /**
      * Find user plan statuses by travel plan and user plan status

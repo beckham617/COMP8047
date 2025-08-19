@@ -17,11 +17,11 @@ public interface SharedExpenseRepository extends JpaRepository<SharedExpense, Lo
     // Find all expenses for a specific travel plan
     List<SharedExpense> findByTravelPlanOrderByCreatedAtDesc(TravelPlan travelPlan);
     
-    // Find expenses by creator
-    List<SharedExpense> findByCreatorOrderByCreatedAtDesc(User creator);
+    // Find expenses by payer
+    List<SharedExpense> findByPaidByOrderByCreatedAtDesc(User paidBy);
     
-    // Find expenses by travel plan and creator
-    List<SharedExpense> findByTravelPlanAndCreatorOrderByCreatedAtDesc(TravelPlan travelPlan, User creator);
+    // Find expenses by travel plan and payer
+    List<SharedExpense> findByTravelPlanAndPaidByOrderByCreatedAtDesc(TravelPlan travelPlan, User paidBy);
     
     // Find expenses by travel plan and status
     List<SharedExpense> findByTravelPlanAndStatusOrderByCreatedAtDesc(TravelPlan travelPlan, SharedExpense.ExpenseStatus status);
@@ -53,5 +53,5 @@ public interface SharedExpenseRepository extends JpaRepository<SharedExpense, Lo
     void deleteByTravelPlan(TravelPlan travelPlan);
     
     // Delete all expenses by a user
-    void deleteByCreator(User creator);
+    void deleteByPaidBy(User paidBy);
 } 

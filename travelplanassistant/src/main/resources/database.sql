@@ -1,4 +1,4 @@
--- USERS TABLE
+-- Create users table
 CREATE TABLE users (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     email VARCHAR(255) NOT NULL UNIQUE,
@@ -6,10 +6,10 @@ CREATE TABLE users (
     first_name VARCHAR(255) NOT NULL,
     last_name VARCHAR(255) NOT NULL,
     gender VARCHAR(20) NOT NULL,
-    age INT NOT NULL,
+    birth_year INT NOT NULL,
+    birth_month INT NOT NULL,
     phone_number VARCHAR(50),
-    main_language VARCHAR(100) NOT NULL,
-    additional_languages VARCHAR(255),
+    language VARCHAR(100) NOT NULL,
     city VARCHAR(100) NOT NULL,
     country VARCHAR(100) NOT NULL,
     profile_picture VARCHAR(255),
@@ -18,43 +18,48 @@ CREATE TABLE users (
     updated_at DATETIME,
     last_login DATETIME,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    role VARCHAR(20) NOT NULL
+    role VARCHAR(20) NOT NULL DEFAULT 'USER',
+    
+    -- Add indexes for better performance
+    INDEX idx_email (email),
+    INDEX idx_city (city),
+    INDEX idx_country (country),
+    INDEX idx_language (language),
+    INDEX idx_gender (gender),
+    INDEX idx_birth_year (birth_year),
+    INDEX idx_is_active (is_active),
+    INDEX idx_created_at (created_at)
 );
 
--- TRAVEL PLANS TABLE
 CREATE TABLE travel_plans (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     title VARCHAR(200) NOT NULL,
-    description VARCHAR(2000) NOT NULL,
-    plan_type VARCHAR(50) NOT NULL,
-    origin_location VARCHAR(255),
-    destination VARCHAR(255) NOT NULL,
-    destination_timezone VARCHAR(100),
+    plan_type VARCHAR(20) NOT NULL,
+    category VARCHAR(30) NOT NULL,
     start_date DATETIME NOT NULL,
     end_date DATETIME NOT NULL,
-    transport_type VARCHAR(50),
-    accommodation_type VARCHAR(255),
-    accommodation_details VARCHAR(1000),
-    estimated_budget DECIMAL(10,2),
-    optional_expenses VARCHAR(1000),
+    origin_country VARCHAR(100),
+    origin_city VARCHAR(100),
+    destination_country VARCHAR(100),
+    destination_city VARCHAR(100),
+    transportation VARCHAR(20),
+    accommodation VARCHAR(20),
     max_members INT NOT NULL,
-    min_members INT DEFAULT 1,
-    gender_preference VARCHAR(50),
-    min_age INT,
-    max_age INT,
-    required_languages VARCHAR(255),
-    communication_languages VARCHAR(255),
-    plan_status VARCHAR(50) NOT NULL,
-    visibility VARCHAR(20) NOT NULL,
+    description VARCHAR(2000) NOT NULL,
+    images JSON,
+    gender VARCHAR(20),
+    age_min INT,
+    age_max INT,
+    language VARCHAR(100),
+    status VARCHAR(20) NOT NULL,
     owner_id BIGINT NOT NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME,
-    started_at DATETIME,
-    completed_at DATETIME,
     cancelled_at DATETIME,
     cancellation_reason VARCHAR(500),
+    -- Relationships (foreign keys)
     FOREIGN KEY (owner_id) REFERENCES users(id)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- USER_PLAN_STATUS TABLE
 CREATE TABLE user_plan_status (
@@ -175,3 +180,15 @@ CREATE TABLE expense_allocations (
     FOREIGN KEY (shared_expense_id) REFERENCES shared_expenses(id),
     FOREIGN KEY (user_id) REFERENCES users(id)
 ); 
+
+
+drop table chat_messages;
+drop table message_read_receipts;
+drop table poll_votes;
+drop table poll_options;
+drop table polls;
+drop table expense_allocations;
+drop table shared_expenses;
+drop table user_plan_status;
+drop table travel_plans;
+drop table users;

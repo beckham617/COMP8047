@@ -1,7 +1,5 @@
 package com.comp8047.majorproject.travelplanassistant.service;
 
-import com.comp8047.majorproject.travelplanassistant.dto.PollCreateRequest;
-import com.comp8047.majorproject.travelplanassistant.dto.PollResponse;
 import com.comp8047.majorproject.travelplanassistant.entity.Poll;
 import com.comp8047.majorproject.travelplanassistant.entity.TravelPlan;
 import com.comp8047.majorproject.travelplanassistant.entity.User;
@@ -9,12 +7,16 @@ import com.comp8047.majorproject.travelplanassistant.entity.UserPlanStatus;
 import com.comp8047.majorproject.travelplanassistant.repository.PollRepository;
 import com.comp8047.majorproject.travelplanassistant.repository.TravelPlanRepository;
 import com.comp8047.majorproject.travelplanassistant.repository.UserPlanStatusRepository;
+import com.comp8047.majorproject.travelplanassistant.dto.PollCreateRequest;
+import com.comp8047.majorproject.travelplanassistant.dto.PollResponse;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -141,7 +143,7 @@ public class PollService {
         }
         
         // Check if poll is active
-        if (!poll.getIsActive()) {
+        if (!poll.isActive()) {
             throw new IllegalStateException("Poll is not active");
         }
         
@@ -150,8 +152,14 @@ public class PollService {
             throw new IllegalStateException("User has already voted on this poll");
         }
         
-        // Add vote
-        poll.addVote(user, optionId);
+        // Find the option and add vote
+        Poll.PollOption selectedOption = poll.getOptions().stream()
+                .filter(option -> option.getId().equals(optionId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Poll option not found"));
+        
+        Poll.PollVote vote = new Poll.PollVote(poll, selectedOption, user);
+        poll.getVotes().add(vote);
         Poll savedPoll = pollRepository.save(poll);
         
         return convertToResponse(savedPoll);
@@ -169,11 +177,11 @@ public class PollService {
         Poll poll = pollOpt.get();
         
         // Check if user is the creator
-        if (!poll.getCreator().getId().equals(user.getId())) {
+        if (!poll.getCreatedBy().getId().equals(user.getId())) {
             throw new IllegalStateException("Only poll creator can deactivate the poll");
         }
         
-        poll.setIsActive(false);
+        poll.setStatus(Poll.PollStatus.CLOSED);
         Poll savedPoll = pollRepository.save(poll);
         
         return convertToResponse(savedPoll);
@@ -191,7 +199,7 @@ public class PollService {
         Poll poll = pollOpt.get();
         
         // Check if user is the creator
-        if (!poll.getCreator().getId().equals(user.getId())) {
+        if (!poll.getCreatedBy().getId().equals(user.getId())) {
             throw new IllegalStateException("Only poll creator can delete the poll");
         }
         
@@ -214,13 +222,27 @@ public class PollService {
         PollResponse response = new PollResponse();
         response.setId(poll.getId());
         response.setQuestion(poll.getQuestion());
-        response.setOptions(poll.getOptions());
-        response.setCreatorId(poll.getCreator().getId());
-        response.setCreatorName(poll.getCreator().getFirstName() + " " + poll.getCreator().getLastName());
-        response.setCreatorAvatar(poll.getCreator().getProfilePicture());
+        
+        // Convert PollOption objects to strings
+        List<String> optionTexts = poll.getOptions().stream()
+                .map(Poll.PollOption::getText)
+                .collect(Collectors.toList());
+        response.setOptions(optionTexts);
+        
+        response.setCreatorId(poll.getCreatedBy().getId());
+        response.setCreatorName(poll.getCreatedBy().getFirstName() + " " + poll.getCreatedBy().getLastName());
+        response.setCreatorAvatar(poll.getCreatedBy().getProfilePicture());
         response.setTravelPlanId(poll.getTravelPlan().getId());
-        response.setIsActive(poll.getIsActive());
-        response.setVoteCounts(poll.getVoteCounts());
+        response.setIsActive(poll.isActive());
+        
+        // Create vote counts map
+        Map<String, Integer> voteCounts = poll.getOptions().stream()
+                .collect(Collectors.toMap(
+                    Poll.PollOption::getText,
+                    Poll.PollOption::getVoteCount
+                ));
+        response.setVoteCounts(voteCounts);
+        
         response.setCreatedAt(poll.getCreatedAt());
         response.setUpdatedAt(poll.getUpdatedAt());
         

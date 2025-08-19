@@ -8,13 +8,14 @@ public class RegisterRequest {
     private String firstName;
     private String lastName;
     private User.Gender gender;
-    private Integer age;
+    private Integer birthYear;
+    private Integer birthMonth;
     private String phoneNumber;
-    private String mainLanguage;
-    private String additionalLanguages;
+    private String language;
     private String city;
     private String country;
     private String bio;
+    private String profilePicture;
 
     public String getEmail() {
         return email;
@@ -46,11 +47,17 @@ public class RegisterRequest {
     public void setGender(User.Gender gender) {
         this.gender = gender;
     }
-    public Integer getAge() {
-        return age;
+    public Integer getBirthYear() {
+        return birthYear;
     }
-    public void setAge(Integer age) {
-        this.age = age;
+    public void setBirthYear(Integer birthYear) {
+        this.birthYear = birthYear;
+    }
+    public Integer getBirthMonth() {
+        return birthMonth;
+    }
+    public void setBirthMonth(Integer birthMonth) {
+        this.birthMonth = birthMonth;
     }
     public String getPhoneNumber() {
         return phoneNumber;
@@ -58,17 +65,11 @@ public class RegisterRequest {
     public void setPhoneNumber(String phoneNumber) {
         this.phoneNumber = phoneNumber;
     }
-    public String getMainLanguage() {
-        return mainLanguage;
+    public String getLanguage() {
+        return language;
     }
-    public void setMainLanguage(String mainLanguage) {
-        this.mainLanguage = mainLanguage;
-    }
-    public String getAdditionalLanguages() {
-        return additionalLanguages;
-    }
-    public void setAdditionalLanguages(String additionalLanguages) {
-        this.additionalLanguages = additionalLanguages;
+    public void setLanguage(String language) {
+        this.language = language;
     }
     public String getCity() {
         return city;
@@ -87,5 +88,11 @@ public class RegisterRequest {
     }
     public void setBio(String bio) {
         this.bio = bio;
+    }
+    public String getProfilePicture() {
+        return profilePicture;
+    }
+    public void setProfilePicture(String profilePicture) {
+        this.profilePicture = profilePicture;
     }
 } 

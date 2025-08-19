@@ -1,6 +1,6 @@
 package com.comp8047.majorproject.travelplanassistant.controller;
 
-import com.comp8047.majorproject.travelplanassistant.dto.TravelPlanCreateRequest;
+import com.comp8047.majorproject.travelplanassistant.dto.TravelPlanRequest;
 import com.comp8047.majorproject.travelplanassistant.dto.TravelPlanResponse;
 import com.comp8047.majorproject.travelplanassistant.entity.User;
 import com.comp8047.majorproject.travelplanassistant.service.TravelPlanService;
@@ -13,19 +13,23 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/travel-plans")
+@RequestMapping("/travel-plans")
 @CrossOrigin(origins = "*")
 public class TravelPlanController {
     
     @Autowired
     private TravelPlanService travelPlanService;
     
+    public TravelPlanController(TravelPlanService travelPlanService) {
+        this.travelPlanService = travelPlanService;
+    }
+
     /**
      * Create a new travel plan
      */
     @PostMapping
     public ResponseEntity<TravelPlanResponse> createTravelPlan(
-            @Valid @RequestBody TravelPlanCreateRequest request,
+            @Valid @RequestBody TravelPlanRequest request,
             @AuthenticationPrincipal User user) {
         TravelPlanResponse response = travelPlanService.createTravelPlan(request, user);
         return ResponseEntity.ok(response);
@@ -53,7 +57,7 @@ public class TravelPlanController {
     }
     
     /**
-     * Get current plans for a user
+     * Get current plans for the authenticated user
      */
     @GetMapping("/current")
     public ResponseEntity<List<TravelPlanResponse>> getCurrentPlans(
@@ -63,7 +67,7 @@ public class TravelPlanController {
     }
     
     /**
-     * Get history plans for a user
+     * Get history plans for the authenticated user
      */
     @GetMapping("/history")
     public ResponseEntity<List<TravelPlanResponse>> getHistoryPlans(
@@ -79,8 +83,8 @@ public class TravelPlanController {
     public ResponseEntity<TravelPlanResponse> getTravelPlanById(
             @PathVariable Long planId,
             @AuthenticationPrincipal User user) {
-        TravelPlanResponse response = travelPlanService.getTravelPlanById(planId, user.getId());
-        return ResponseEntity.ok(response);
+        TravelPlanResponse plan = travelPlanService.getTravelPlanById(planId, user.getId());
+        return ResponseEntity.ok(plan);
     }
     
     /**
@@ -97,7 +101,7 @@ public class TravelPlanController {
     /**
      * Cancel application to a travel plan
      */
-    @PostMapping("/{planId}/cancel-application")
+    @DeleteMapping("/{planId}/apply")
     public ResponseEntity<TravelPlanResponse> cancelApplication(
             @PathVariable Long planId,
             @AuthenticationPrincipal User user) {
@@ -106,7 +110,7 @@ public class TravelPlanController {
     }
     
     /**
-     * Accept application to a travel plan (owner only)
+     * Accept application to travel plan (owner only)
      */
     @PostMapping("/{planId}/applications/{applicantId}/accept")
     public ResponseEntity<TravelPlanResponse> acceptApplication(
@@ -118,14 +122,14 @@ public class TravelPlanController {
     }
     
     /**
-     * Refuse application to a travel plan (owner only)
+     * Reject application to travel plan (owner only)
      */
-    @PostMapping("/{planId}/applications/{applicantId}/refuse")
-    public ResponseEntity<TravelPlanResponse> refuseApplication(
+    @PostMapping("/{planId}/applications/{applicantId}/reject")
+    public ResponseEntity<TravelPlanResponse> rejectApplication(
             @PathVariable Long planId,
             @PathVariable Long applicantId,
             @AuthenticationPrincipal User owner) {
-        TravelPlanResponse response = travelPlanService.refuseApplication(planId, applicantId, owner);
+        TravelPlanResponse response = travelPlanService.rejectApplication(planId, applicantId, owner);
         return ResponseEntity.ok(response);
     }
     
@@ -134,17 +138,17 @@ public class TravelPlanController {
      */
     @PostMapping("/{planId}/invite")
     public ResponseEntity<TravelPlanResponse> inviteUser(
+            @RequestParam String email,
             @PathVariable Long planId,
-            @RequestParam String inviteeEmail,
             @AuthenticationPrincipal User owner) {
-        TravelPlanResponse response = travelPlanService.inviteUser(planId, inviteeEmail, owner);
+        TravelPlanResponse response = travelPlanService.inviteUser(planId, email, owner);
         return ResponseEntity.ok(response);
     }
     
     /**
      * Accept invitation to travel plan
      */
-    @PostMapping("/{planId}/accept-invitation")
+    @PostMapping("/{planId}/invite/accept")
     public ResponseEntity<TravelPlanResponse> acceptInvitation(
             @PathVariable Long planId,
             @AuthenticationPrincipal User user) {
@@ -155,7 +159,7 @@ public class TravelPlanController {
     /**
      * Refuse invitation to travel plan
      */
-    @PostMapping("/{planId}/refuse-invitation")
+    @PostMapping("/{planId}/invite/refuse")
     public ResponseEntity<TravelPlanResponse> refuseInvitation(
             @PathVariable Long planId,
             @AuthenticationPrincipal User user) {
@@ -168,8 +172,8 @@ public class TravelPlanController {
      */
     @PostMapping("/{planId}/cancel")
     public ResponseEntity<TravelPlanResponse> cancelPlan(
-            @PathVariable Long planId,
             @RequestParam String reason,
+            @PathVariable Long planId,
             @AuthenticationPrincipal User owner) {
         TravelPlanResponse response = travelPlanService.cancelPlan(planId, reason, owner);
         return ResponseEntity.ok(response);
@@ -201,7 +205,8 @@ public class TravelPlanController {
      * Check if user has current plan
      */
     @GetMapping("/check-current")
-    public ResponseEntity<Boolean> userHasCurrentPlan(@AuthenticationPrincipal User user) {
+    public ResponseEntity<Boolean> userHasCurrentPlan(
+            @AuthenticationPrincipal User user) {
         boolean hasCurrentPlan = travelPlanService.userHasCurrentPlan(user.getId());
         return ResponseEntity.ok(hasCurrentPlan);
     }

@@ -233,10 +233,12 @@ public class UserPlanStatus {
     }
     
     public boolean isInvitedRefused() {
-    
-    public boolean isActive() {
-        return status == Status.OWNED || status == Status.ACCEPTED;
+        return status == Status.INVITED_REFUSED;
     }
+    
+    // public boolean isActive() {
+    //     return status == Status.OWNED || status == Status.ACCEPTED;
+    // }
     
     public boolean isPending() {
         return status == Status.APPLIED || status == Status.INVITED;

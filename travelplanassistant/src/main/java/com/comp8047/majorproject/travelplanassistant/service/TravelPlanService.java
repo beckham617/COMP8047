@@ -1,6 +1,6 @@
 package com.comp8047.majorproject.travelplanassistant.service;
 
-import com.comp8047.majorproject.travelplanassistant.dto.TravelPlanCreateRequest;
+import com.comp8047.majorproject.travelplanassistant.dto.TravelPlanRequest;
 import com.comp8047.majorproject.travelplanassistant.dto.TravelPlanResponse;
 import com.comp8047.majorproject.travelplanassistant.entity.TravelPlan;
 import com.comp8047.majorproject.travelplanassistant.entity.User;
@@ -8,11 +8,17 @@ import com.comp8047.majorproject.travelplanassistant.entity.UserPlanStatus;
 import com.comp8047.majorproject.travelplanassistant.repository.TravelPlanRepository;
 import com.comp8047.majorproject.travelplanassistant.repository.UserPlanStatusRepository;
 import com.comp8047.majorproject.travelplanassistant.repository.UserRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -30,10 +36,23 @@ public class TravelPlanService {
     @Autowired
     private UserRepository userRepository;
     
+    @Autowired
+    private ObjectMapper objectMapper;
+    
+    public TravelPlanService(TravelPlanRepository travelPlanRepository, 
+    UserPlanStatusRepository userPlanStatusRepository,
+    UserRepository userRepository,
+    ObjectMapper objectMapper) {
+        this.travelPlanRepository = travelPlanRepository;
+        this.userPlanStatusRepository = userPlanStatusRepository;
+        this.userRepository = userRepository;
+        this.objectMapper = objectMapper;
+    }
+
     /**
      * Create a new travel plan
      */
-    public TravelPlanResponse createTravelPlan(TravelPlanCreateRequest request, User owner) {
+    public TravelPlanResponse createTravelPlan(TravelPlanRequest request, User owner) {
         // Check if user already has a current plan
         if (travelPlanRepository.userHasCurrentPlan(owner.getId())) {
             throw new IllegalStateException("User already has a current travel plan");
@@ -41,26 +60,33 @@ public class TravelPlanService {
         
         TravelPlan travelPlan = new TravelPlan();
         travelPlan.setTitle(request.getTitle());
-        travelPlan.setDescription(request.getDescription());
         travelPlan.setPlanType(request.getPlanType());
-        travelPlan.setOriginLocation(request.getOriginLocation());
-        travelPlan.setDestination(request.getDestination());
-        travelPlan.setDestinationTimezone(request.getDestinationTimezone());
-        travelPlan.setStartDate(request.getStartDate());
-        travelPlan.setEndDate(request.getEndDate());
-        travelPlan.setTransportType(request.getTransportType());
-        travelPlan.setAccommodationType(request.getAccommodationType());
-        travelPlan.setAccommodationDetails(request.getAccommodationDetails());
-        travelPlan.setEstimatedBudget(request.getEstimatedBudget());
-        travelPlan.setOptionalExpenses(request.getOptionalExpenses());
+        travelPlan.setCategory(request.getCategory());
+        travelPlan.setStartDate(request.getStartDate().atStartOfDay());
+        travelPlan.setEndDate(request.getEndDate().atTime(java.time.LocalTime.MAX));
+        travelPlan.setOriginCountry(request.getOriginCountry());
+        travelPlan.setOriginCity(request.getOriginCity());
+        travelPlan.setDestinationCountry(request.getDestinationCountry());
+        travelPlan.setDestinationCity(request.getDestinationCity());
+        travelPlan.setTransportation(request.getTransportation());
+        travelPlan.setAccommodation(request.getAccommodation());
         travelPlan.setMaxMembers(request.getMaxMembers());
-        travelPlan.setMinMembers(request.getMinMembers());
-        travelPlan.setGenderPreference(request.getGenderPreference());
-        travelPlan.setMinAge(request.getMinAge());
-        travelPlan.setMaxAge(request.getMaxAge());
-        travelPlan.setRequiredLanguages(request.getRequiredLanguages());
-        travelPlan.setCommunicationLanguages(request.getCommunicationLanguages());
-        travelPlan.setVisibility(request.getVisibility());
+        travelPlan.setDescription(request.getDescription());
+        if (request.getImages() != null && !request.getImages().isEmpty()) {
+            try {
+                String imagesJson = objectMapper.writeValueAsString(request.getImages());
+                travelPlan.setImages(imagesJson);
+            } catch (JsonProcessingException e) {
+                throw new RuntimeException("Failed to serialize images", e);
+            }
+        } else {
+            travelPlan.setImages("[]");
+        }
+        travelPlan.setGender(request.getGender());
+        travelPlan.setAgeMin(request.getAgeMin());
+        travelPlan.setAgeMax(request.getAgeMax());
+        travelPlan.setLanguage(request.getLanguage());
+        travelPlan.setStatus(TravelPlan.Status.NEW);
         travelPlan.setOwner(owner);
         
         TravelPlan savedPlan = travelPlanRepository.save(travelPlan);
@@ -69,54 +95,55 @@ public class TravelPlanService {
         UserPlanStatus ownerStatus = new UserPlanStatus(owner, savedPlan, UserPlanStatus.Status.OWNED);
         userPlanStatusRepository.save(ownerStatus);
         
-        return convertToResponse(savedPlan, UserPlanStatus.Status.OWNED);
+        savedPlan.setUserPlanStatuses(new ArrayList<>(Arrays.asList(ownerStatus)));
+
+        return convertToResponse(savedPlan);
     }
     
     /**
-     * Get all public new plans not associated with the current user
+     * Get all new public plans (planType = PUBLIC, status = NEW) not associated with the current user
      */
     public List<TravelPlanResponse> getPublicNewPlans(Long userId) {
-        List<TravelPlan> plans = travelPlanRepository.findPublicNewPlansNotAssociatedWithUser(userId);
+        // Find all plans with planType PUBLIC and status NEW, and filter out those where user is already a member
+        List<TravelPlan> plans = travelPlanRepository.findByPlanTypeAndStatus(TravelPlan.PlanType.PUBLIC, TravelPlan.Status.NEW);
         return plans.stream()
-                .map(plan -> convertToResponse(plan, null))
+                .filter(plan -> userPlanStatusRepository.findByUserAndTravelPlan(userRepository.findById(userId).orElse(null), plan).isEmpty())
+                .map(plan -> convertToResponse(plan))
                 .collect(Collectors.toList());
     }
-    
+
     /**
-     * Search public plans by keyword
+     * Search public plans by keyword (planType = PUBLIC, status = NEW)
      */
     public List<TravelPlanResponse> searchPublicPlans(String keyword, Long userId) {
-        List<TravelPlan> plans = travelPlanRepository.searchPublicPlans(keyword, userId);
+        List<TravelPlan> plans = travelPlanRepository.findByPlanTypeAndStatus(TravelPlan.PlanType.PUBLIC, TravelPlan.Status.NEW)
+                .stream()
+                .filter(plan -> (plan.getTitle() != null && plan.getTitle().toLowerCase().contains(keyword.toLowerCase()))
+                        || (plan.getDescription() != null && plan.getDescription().toLowerCase().contains(keyword.toLowerCase())))
+                .filter(plan -> userPlanStatusRepository.findByUserAndTravelPlan(userRepository.findById(userId).orElse(null), plan).isEmpty())
+                .collect(Collectors.toList());
         return plans.stream()
-                .map(plan -> convertToResponse(plan, null))
+                .map(plan -> convertToResponse(plan))
                 .collect(Collectors.toList());
     }
-    
+
     /**
-     * Get current plans for a user
+     * Get current plans for a user (status NEW or IN_PROGRESS)
      */
     public List<TravelPlanResponse> getCurrentPlans(Long userId) {
-        List<TravelPlan> plans = travelPlanRepository.findCurrentPlansForUser(userId);
-        return plans.stream()
-                .map(plan -> {
-                    UserPlanStatus userStatus = userPlanStatusRepository.findByUserAndTravelPlan(
-                            userRepository.findById(userId).orElse(null), plan).orElse(null);
-                    return convertToResponse(plan, userStatus != null ? userStatus.getStatus() : null);
-                })
-                .collect(Collectors.toList());
+        List<TravelPlan> travelPlans = travelPlanRepository.getCurrentPlans(userId);
+        return travelPlans.stream().map(tp -> convertToResponse(tp)).collect(Collectors.toList());
     }
-    
+
     /**
-     * Get history plans for a user
+     * Get history plans for a user (status COMPLETED or CANCELLED)
      */
     public List<TravelPlanResponse> getHistoryPlans(Long userId) {
-        List<TravelPlan> plans = travelPlanRepository.findHistoryPlansForUser(userId);
-        return plans.stream()
-                .map(plan -> {
-                    UserPlanStatus userStatus = userPlanStatusRepository.findByUserAndTravelPlan(
-                            userRepository.findById(userId).orElse(null), plan).orElse(null);
-                    return convertToResponse(plan, userStatus != null ? userStatus.getStatus() : null);
-                })
+        User user = userRepository.findById(userId).orElse(null);
+        List<UserPlanStatus> userStatuses = userPlanStatusRepository.findByUser(user);
+        return userStatuses.stream()
+                .filter(ups -> ups.getTravelPlan().getStatus() == TravelPlan.Status.COMPLETED || ups.getTravelPlan().getStatus() == TravelPlan.Status.CANCELLED)
+                .map(ups -> convertToResponse(ups.getTravelPlan()))
                 .collect(Collectors.toList());
     }
     
@@ -133,7 +160,7 @@ public class TravelPlanService {
         UserPlanStatus userStatus = userPlanStatusRepository.findByUserAndTravelPlan(
                 userRepository.findById(userId).orElse(null), plan).orElse(null);
         
-        return convertToResponse(plan, userStatus != null ? userStatus.getStatus() : null);
+        return convertToResponse(plan);
     }
     
     /**
@@ -141,7 +168,7 @@ public class TravelPlanService {
      */
     public TravelPlanResponse applyToPlan(Long planId, User user) {
         // Check if user already has a current plan
-        if (travelPlanRepository.userHasCurrentPlan(user.getId())) {
+        if (userHasCurrentPlan(user.getId())) {
             throw new IllegalStateException("User already has a current travel plan");
         }
         
@@ -153,8 +180,7 @@ public class TravelPlanService {
         TravelPlan plan = planOpt.get();
         
         // Check if plan is public and new
-        if (plan.getVisibility() != TravelPlan.Visibility.PUBLIC || 
-            plan.getPlanStatus() != TravelPlan.PlanStatus.NEW) {
+        if (plan.getPlanType() != TravelPlan.PlanType.PUBLIC || plan.getStatus() != TravelPlan.Status.NEW) {
             throw new IllegalStateException("Plan is not available for application");
         }
         
@@ -168,7 +194,7 @@ public class TravelPlanService {
         UserPlanStatus application = new UserPlanStatus(user, plan, UserPlanStatus.Status.APPLIED);
         userPlanStatusRepository.save(application);
         
-        return convertToResponse(plan, UserPlanStatus.Status.APPLIED);
+        return convertToResponse(plan);
     }
     
     /**
@@ -192,14 +218,13 @@ public class TravelPlanService {
             throw new IllegalStateException("Can only cancel pending applications");
         }
         
-        userStatus.setStatus(UserPlanStatus.Status.APPLIED_CANCELLED);
-        userPlanStatusRepository.save(userStatus);
+        userPlanStatusRepository.delete(userStatus);
         
-        return convertToResponse(plan, UserPlanStatus.Status.APPLIED_CANCELLED);
+        return convertToResponse(plan);
     }
     
     /**
-     * Accept application to a travel plan (owner only)
+     * Accept application to travel plan (owner only)
      */
     public TravelPlanResponse acceptApplication(Long planId, Long applicantId, User owner) {
         Optional<TravelPlan> planOpt = travelPlanRepository.findById(planId);
@@ -218,21 +243,25 @@ public class TravelPlanService {
                 .orElseThrow(() -> new IllegalArgumentException("Applicant not found"));
         
         Optional<UserPlanStatus> userStatusOpt = userPlanStatusRepository.findByUserAndTravelPlan(applicant, plan);
-        if (userStatusOpt.isEmpty() || userStatusOpt.get().getStatus() != UserPlanStatus.Status.APPLIED) {
-            throw new IllegalStateException("No pending application found");
+        if (userStatusOpt.isEmpty()) {
+            throw new IllegalArgumentException("No application found for this plan");
         }
         
         UserPlanStatus userStatus = userStatusOpt.get();
+        if (userStatus.getStatus() != UserPlanStatus.Status.APPLIED) {
+            throw new IllegalStateException("Can only accept pending applications");
+        }
+        
         userStatus.setStatus(UserPlanStatus.Status.APPLIED_ACCEPTED);
         userPlanStatusRepository.save(userStatus);
         
-        return convertToResponse(plan, UserPlanStatus.Status.OWNED);
+        return convertToResponse(plan);
     }
     
     /**
-     * Refuse application to a travel plan (owner only)
+     * Reject application to travel plan (owner only)
      */
-    public TravelPlanResponse refuseApplication(Long planId, Long applicantId, User owner) {
+    public TravelPlanResponse rejectApplication(Long planId, Long applicantId, User owner) {
         Optional<TravelPlan> planOpt = travelPlanRepository.findById(planId);
         if (planOpt.isEmpty()) {
             throw new IllegalArgumentException("Travel plan not found");
@@ -242,22 +271,26 @@ public class TravelPlanService {
         
         // Check if user is owner
         if (!plan.getOwner().getId().equals(owner.getId())) {
-            throw new IllegalStateException("Only plan owner can refuse applications");
+            throw new IllegalStateException("Only plan owner can reject applications");
         }
         
         User applicant = userRepository.findById(applicantId)
                 .orElseThrow(() -> new IllegalArgumentException("Applicant not found"));
         
         Optional<UserPlanStatus> userStatusOpt = userPlanStatusRepository.findByUserAndTravelPlan(applicant, plan);
-        if (userStatusOpt.isEmpty() || userStatusOpt.get().getStatus() != UserPlanStatus.Status.APPLIED) {
-            throw new IllegalStateException("No pending application found");
+        if (userStatusOpt.isEmpty()) {
+            throw new IllegalArgumentException("No application found for this plan");
         }
         
         UserPlanStatus userStatus = userStatusOpt.get();
+        if (userStatus.getStatus() != UserPlanStatus.Status.APPLIED) {
+            throw new IllegalStateException("Can only reject pending applications");
+        }
+        
         userStatus.setStatus(UserPlanStatus.Status.APPLIED_REFUSED);
         userPlanStatusRepository.save(userStatus);
         
-        return convertToResponse(plan, UserPlanStatus.Status.OWNED);
+        return convertToResponse(plan);
     }
     
     /**
@@ -294,7 +327,7 @@ public class TravelPlanService {
         UserPlanStatus invitation = new UserPlanStatus(invitee, plan, UserPlanStatus.Status.INVITED);
         userPlanStatusRepository.save(invitation);
         
-        return convertToResponse(plan, UserPlanStatus.Status.OWNED);
+        return convertToResponse(plan);
     }
     
     /**
@@ -321,7 +354,7 @@ public class TravelPlanService {
         userStatus.setStatus(UserPlanStatus.Status.INVITED_ACCEPTED);
         userPlanStatusRepository.save(userStatus);
         
-        return convertToResponse(plan, UserPlanStatus.Status.INVITED_ACCEPTED);
+        return convertToResponse(plan);
     }
     
     /**
@@ -348,7 +381,7 @@ public class TravelPlanService {
         userStatus.setStatus(UserPlanStatus.Status.INVITED_REFUSED);
         userPlanStatusRepository.save(userStatus);
         
-        return convertToResponse(plan, UserPlanStatus.Status.INVITED_REFUSED);
+        return convertToResponse(plan);
     }
     
     /**
@@ -367,12 +400,12 @@ public class TravelPlanService {
             throw new IllegalStateException("Only plan owner can cancel the plan");
         }
         
-        plan.setPlanStatus(TravelPlan.PlanStatus.CANCELLED);
+        plan.setStatus(TravelPlan.Status.CANCELLED);
         plan.setCancelledAt(LocalDateTime.now());
         plan.setCancellationReason(reason);
         travelPlanRepository.save(plan);
         
-        return convertToResponse(plan, UserPlanStatus.Status.OWNED);
+        return convertToResponse(plan);
     }
     
     /**
@@ -391,15 +424,15 @@ public class TravelPlanService {
             throw new IllegalStateException("Only plan owner can start the plan");
         }
         
-        if (plan.getPlanStatus() != TravelPlan.PlanStatus.NEW) {
+        if (plan.getStatus() != TravelPlan.Status.NEW) {
             throw new IllegalStateException("Plan is not in NEW status");
         }
         
-        plan.setPlanStatus(TravelPlan.PlanStatus.IN_PROGRESS);
-        plan.setStartedAt(LocalDateTime.now());
+        plan.setStatus(TravelPlan.Status.IN_PROGRESS);
+        // plan.setStartedAt(LocalDateTime.now()); // Remove, no such field
         travelPlanRepository.save(plan);
         
-        return convertToResponse(plan, UserPlanStatus.Status.OWNED);
+        return convertToResponse(plan);
     }
     
     /**
@@ -418,15 +451,15 @@ public class TravelPlanService {
             throw new IllegalStateException("Only plan owner can complete the plan");
         }
         
-        if (plan.getPlanStatus() != TravelPlan.PlanStatus.IN_PROGRESS) {
+        if (plan.getStatus() != TravelPlan.Status.IN_PROGRESS) {
             throw new IllegalStateException("Plan is not in progress");
         }
         
-        plan.setPlanStatus(TravelPlan.PlanStatus.COMPLETED);
-        plan.setCompletedAt(LocalDateTime.now());
+        plan.setStatus(TravelPlan.Status.COMPLETED);
+        // plan.setCompletedAt(LocalDateTime.now()); // Remove, no such field
         travelPlanRepository.save(plan);
         
-        return convertToResponse(plan, UserPlanStatus.Status.OWNED);
+        return convertToResponse(plan);
     }
     
     /**
@@ -439,43 +472,46 @@ public class TravelPlanService {
     /**
      * Convert TravelPlan to TravelPlanResponse
      */
-    private TravelPlanResponse convertToResponse(TravelPlan plan, UserPlanStatus.Status userStatus) {
+    private TravelPlanResponse convertToResponse(TravelPlan plan) {
         TravelPlanResponse response = new TravelPlanResponse();
         response.setId(plan.getId());
         response.setTitle(plan.getTitle());
-        response.setDescription(plan.getDescription());
         response.setPlanType(plan.getPlanType());
-        response.setOriginLocation(plan.getOriginLocation());
-        response.setDestination(plan.getDestination());
-        response.setDestinationTimezone(plan.getDestinationTimezone());
+        response.setCategory(plan.getCategory());
         response.setStartDate(plan.getStartDate());
         response.setEndDate(plan.getEndDate());
-        response.setTransportType(plan.getTransportType());
-        response.setAccommodationType(plan.getAccommodationType());
-        response.setAccommodationDetails(plan.getAccommodationDetails());
-        response.setEstimatedBudget(plan.getEstimatedBudget());
-        response.setOptionalExpenses(plan.getOptionalExpenses());
+        response.setOriginCountry(plan.getOriginCountry());
+        response.setOriginCity(plan.getOriginCity());
+        response.setDestinationCountry(plan.getDestinationCountry());
+        response.setDestinationCity(plan.getDestinationCity());
+        response.setTransportation(plan.getTransportation());
+        response.setAccommodation(plan.getAccommodation());
         response.setMaxMembers(plan.getMaxMembers());
-        response.setMinMembers(plan.getMinMembers());
-        response.setGenderPreference(plan.getGenderPreference());
-        response.setMinAge(plan.getMinAge());
-        response.setMaxAge(plan.getMaxAge());
-        response.setRequiredLanguages(plan.getRequiredLanguages());
-        response.setCommunicationLanguages(plan.getCommunicationLanguages());
-        response.setPlanStatus(plan.getPlanStatus());
-        response.setVisibility(plan.getVisibility());
+        response.setDescription(plan.getDescription());
+        if (plan.getImages() != null && !plan.getImages().isEmpty()) {
+            try {
+                List<String> images = objectMapper.readValue(plan.getImages(), new com.fasterxml.jackson.core.type.TypeReference<List<String>>() {});
+                response.setImages(images);
+            } catch (JsonProcessingException e) {
+                response.setImages(List.of());
+            }
+        } else {
+            response.setImages(List.of());
+        }
+        response.setGender(plan.getGender());
+        response.setAgeMin(plan.getAgeMin());
+        response.setAgeMax(plan.getAgeMax());
+        response.setLanguage(plan.getLanguage());
+        response.setStatus(plan.getStatus());
         response.setOwnerId(plan.getOwner().getId());
         response.setOwnerName(plan.getOwner().getFirstName() + " " + plan.getOwner().getLastName());
-        response.setOwnerAvatar(plan.getOwner().getAvatar());
+        response.setOwnerAvatar(plan.getOwner().getProfilePicture());
         response.setCreatedAt(plan.getCreatedAt());
         response.setUpdatedAt(plan.getUpdatedAt());
-        response.setStartedAt(plan.getStartedAt());
-        response.setCompletedAt(plan.getCompletedAt());
         response.setCancelledAt(plan.getCancelledAt());
         response.setCancellationReason(plan.getCancellationReason());
         response.setCurrentMemberCount(plan.getCurrentMemberCount());
-        response.setUserStatus(userStatus);
-        
+        response.setUserPlanStatus(plan.getUserPlanStatuses().get(0).getStatus());
         return response;
     }
 } 

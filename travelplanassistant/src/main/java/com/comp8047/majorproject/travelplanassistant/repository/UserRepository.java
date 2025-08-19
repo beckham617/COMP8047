@@ -33,9 +33,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findByCountry(String country);
     
     /**
-     * Find users by main language
+     * Find users by language
      */
-    List<User> findByMainLanguage(String mainLanguage);
+    List<User> findByLanguage(String language);
     
     /**
      * Find users by gender
@@ -43,20 +43,20 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findByGender(User.Gender gender);
     
     /**
-     * Find users by age range
+     * Find users by birth year range
      */
-    @Query("SELECT u FROM User u WHERE u.age BETWEEN :minAge AND :maxAge")
-    List<User> findByAgeRange(@Param("minAge") Integer minAge, @Param("maxAge") Integer maxAge);
+    @Query("SELECT u FROM User u WHERE u.birthYear BETWEEN :minYear AND :maxYear")
+    List<User> findByBirthYearRange(@Param("minYear") Integer minYear, @Param("maxYear") Integer maxYear);
     
     /**
-     * Find users by age greater than or equal to
+     * Find users by birth year greater than or equal to
      */
-    List<User> findByAgeGreaterThanEqual(Integer age);
+    List<User> findByBirthYearGreaterThanEqual(Integer birthYear);
     
     /**
-     * Find users by age less than or equal to
+     * Find users by birth year less than or equal to
      */
-    List<User> findByAgeLessThanEqual(Integer age);
+    List<User> findByBirthYearLessThanEqual(Integer birthYear);
     
     /**
      * Find active users
@@ -74,26 +74,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findByCityAndCountry(String city, String country);
     
     /**
-     * Find users by main language and country
+     * Find users by language and country
      */
-    List<User> findByMainLanguageAndCountry(String mainLanguage, String country);
-    
-    /**
-     * Find users by additional languages containing the specified language
-     */
-    @Query("SELECT u FROM User u WHERE u.additionalLanguages LIKE %:language%")
-    List<User> findByAdditionalLanguagesContaining(@Param("language") String language);
-    
-    /**
-     * Find users by main language or additional languages
-     */
-    @Query("SELECT u FROM User u WHERE u.mainLanguage = :language OR u.additionalLanguages LIKE %:language%")
-    List<User> findByMainLanguageOrAdditionalLanguagesContaining(@Param("language") String language);
+    List<User> findByLanguageAndCountry(String language, String country);
     
     /**
      * Find users by name (first name or last name containing the search term)
      */
-    @Query("SELECT u FROM User u WHERE LOWER(u.firstName) LIKE LOWER(%:name%) OR LOWER(u.lastName) LIKE LOWER(%:name%)")
+    @Query("SELECT u FROM User u WHERE LOWER(u.firstName) LIKE LOWER(CONCAT('%', :name, '%')) OR LOWER(u.lastName) LIKE LOWER(CONCAT('%', :name, '%'))")
     List<User> findByNameContainingIgnoreCase(@Param("name") String name);
     
     /**
@@ -136,14 +124,16 @@ public interface UserRepository extends JpaRepository<User, Long> {
      */
     @Query("SELECT u FROM User u WHERE " +
            "(:gender IS NULL OR u.gender = :gender) AND " +
-           "(:minAge IS NULL OR u.age >= :minAge) AND " +
-           "(:maxAge IS NULL OR u.age <= :maxAge) AND " +
-           "(:language IS NULL OR u.mainLanguage = :language OR u.additionalLanguages LIKE %:language%) AND " +
+           "(:minAge IS NULL OR u.birthYear <= :maxBirthYear) AND " +
+           "(:maxAge IS NULL OR u.birthYear >= :minBirthYear) AND " +
+           "(:language IS NULL OR u.language = :language) AND " +
            "u.isActive = true")
     List<User> findUsersForTravelPlanFilter(
             @Param("gender") User.Gender gender,
             @Param("minAge") Integer minAge,
             @Param("maxAge") Integer maxAge,
-            @Param("language") String language
+            @Param("language") String language,
+            @Param("minBirthYear") Integer minBirthYear,
+            @Param("maxBirthYear") Integer maxBirthYear
     );
 } 
