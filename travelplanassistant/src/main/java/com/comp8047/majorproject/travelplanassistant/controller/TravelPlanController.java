@@ -6,6 +6,7 @@ import com.comp8047.majorproject.travelplanassistant.entity.User;
 import com.comp8047.majorproject.travelplanassistant.service.TravelPlanService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -28,186 +29,254 @@ public class TravelPlanController {
      * Create a new travel plan
      */
     @PostMapping
-    public ResponseEntity<TravelPlanResponse> createTravelPlan(
+    public ResponseEntity<?> createTravelPlan(
             @Valid @RequestBody TravelPlanRequest request,
             @AuthenticationPrincipal User user) {
-        TravelPlanResponse response = travelPlanService.createTravelPlan(request, user);
-        return ResponseEntity.ok(response);
+        try {
+            TravelPlanResponse response = travelPlanService.createTravelPlan(request, user);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
     }
     
     /**
      * Get all public new plans not associated with the current user
      */
     @GetMapping("/discovery")
-    public ResponseEntity<List<TravelPlanResponse>> getPublicNewPlans(
+    public ResponseEntity<?> getPublicNewPlans(
             @AuthenticationPrincipal User user) {
-        List<TravelPlanResponse> plans = travelPlanService.getPublicNewPlans(user.getId());
-        return ResponseEntity.ok(plans);
+        try {
+            List<TravelPlanResponse> plans = travelPlanService.getPublicNewPlans(user.getId());
+            return ResponseEntity.ok(plans);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
     }
     
     /**
      * Search public plans by keyword
      */
     @GetMapping("/search")
-    public ResponseEntity<List<TravelPlanResponse>> searchPublicPlans(
+    public ResponseEntity<?> searchPublicPlans(
             @RequestParam String keyword,
             @AuthenticationPrincipal User user) {
-        List<TravelPlanResponse> plans = travelPlanService.searchPublicPlans(keyword, user.getId());
-        return ResponseEntity.ok(plans);
+        try {
+            List<TravelPlanResponse> plans = travelPlanService.searchPublicPlans(keyword, user.getId());
+            return ResponseEntity.ok(plans);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
     }
     
     /**
      * Get current plans for the authenticated user
      */
     @GetMapping("/current")
-    public ResponseEntity<List<TravelPlanResponse>> getCurrentPlans(
+    public ResponseEntity<?> getCurrentPlans(
             @AuthenticationPrincipal User user) {
-        List<TravelPlanResponse> plans = travelPlanService.getCurrentPlans(user.getId());
-        return ResponseEntity.ok(plans);
+        try {
+            List<TravelPlanResponse> plans = travelPlanService.getCurrentPlans(user.getId());
+            return ResponseEntity.ok(plans);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
     }
     
     /**
      * Get history plans for the authenticated user
      */
     @GetMapping("/history")
-    public ResponseEntity<List<TravelPlanResponse>> getHistoryPlans(
+    public ResponseEntity<?> getHistoryPlans(
             @AuthenticationPrincipal User user) {
-        List<TravelPlanResponse> plans = travelPlanService.getHistoryPlans(user.getId());
-        return ResponseEntity.ok(plans);
+        try {
+            List<TravelPlanResponse> plans = travelPlanService.getHistoryPlans(user.getId());
+            return ResponseEntity.ok(plans);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
     }
     
     /**
      * Get travel plan by ID
      */
     @GetMapping("/{planId}")
-    public ResponseEntity<TravelPlanResponse> getTravelPlanById(
+    public ResponseEntity<?> getTravelPlanById(
             @PathVariable Long planId,
             @AuthenticationPrincipal User user) {
-        TravelPlanResponse plan = travelPlanService.getTravelPlanById(planId, user.getId());
-        return ResponseEntity.ok(plan);
+        try {
+            TravelPlanResponse plan = travelPlanService.getTravelPlanById(planId, user.getId());
+            return ResponseEntity.ok(plan);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
     }
     
     /**
      * Apply to a travel plan
      */
     @PostMapping("/{planId}/apply")
-    public ResponseEntity<TravelPlanResponse> applyToPlan(
+    public ResponseEntity<?> applyToPlan(
             @PathVariable Long planId,
             @AuthenticationPrincipal User user) {
-        TravelPlanResponse response = travelPlanService.applyToPlan(planId, user);
-        return ResponseEntity.ok(response);
+        try {
+            TravelPlanResponse response = travelPlanService.applyToPlan(planId, user);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
     }
     
     /**
      * Cancel application to a travel plan
      */
-    @DeleteMapping("/{planId}/apply")
-    public ResponseEntity<TravelPlanResponse> cancelApplication(
+    @PutMapping("/{planId}/cancel")
+    public ResponseEntity<?> cancelApplication(
             @PathVariable Long planId,
             @AuthenticationPrincipal User user) {
-        TravelPlanResponse response = travelPlanService.cancelApplication(planId, user);
-        return ResponseEntity.ok(response);
+        try {
+            TravelPlanResponse response = travelPlanService.cancelApplication(planId, user);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
     }
     
     /**
      * Accept application to travel plan (owner only)
      */
     @PostMapping("/{planId}/applications/{applicantId}/accept")
-    public ResponseEntity<TravelPlanResponse> acceptApplication(
+    public ResponseEntity<?> acceptApplication(
             @PathVariable Long planId,
             @PathVariable Long applicantId,
             @AuthenticationPrincipal User owner) {
-        TravelPlanResponse response = travelPlanService.acceptApplication(planId, applicantId, owner);
-        return ResponseEntity.ok(response);
+        try {
+            TravelPlanResponse response = travelPlanService.handleApplication(planId, applicantId, owner, TravelPlanService.Decision.ACCEPT);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
     }
     
     /**
      * Reject application to travel plan (owner only)
      */
     @PostMapping("/{planId}/applications/{applicantId}/reject")
-    public ResponseEntity<TravelPlanResponse> rejectApplication(
+    public ResponseEntity<?> rejectApplication(
             @PathVariable Long planId,
             @PathVariable Long applicantId,
             @AuthenticationPrincipal User owner) {
-        TravelPlanResponse response = travelPlanService.rejectApplication(planId, applicantId, owner);
-        return ResponseEntity.ok(response);
+        try {
+            TravelPlanResponse response = travelPlanService.handleApplication(planId, applicantId, owner, TravelPlanService.Decision.REFUSE);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
     }
     
     /**
      * Invite user to travel plan (owner only)
      */
     @PostMapping("/{planId}/invite")
-    public ResponseEntity<TravelPlanResponse> inviteUser(
+    public ResponseEntity<?> inviteUser(
             @RequestParam String email,
             @PathVariable Long planId,
             @AuthenticationPrincipal User owner) {
-        TravelPlanResponse response = travelPlanService.inviteUser(planId, email, owner);
-        return ResponseEntity.ok(response);
+        try {
+            TravelPlanResponse response = travelPlanService.inviteUser(planId, email, owner);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
     }
     
     /**
      * Accept invitation to travel plan
      */
     @PostMapping("/{planId}/invite/accept")
-    public ResponseEntity<TravelPlanResponse> acceptInvitation(
+    public ResponseEntity<?> acceptInvitation(
             @PathVariable Long planId,
             @AuthenticationPrincipal User user) {
-        TravelPlanResponse response = travelPlanService.acceptInvitation(planId, user);
-        return ResponseEntity.ok(response);
+        try {
+            TravelPlanResponse response = travelPlanService.handleInvitation(planId, user, TravelPlanService.Decision.ACCEPT);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
     }
     
     /**
      * Refuse invitation to travel plan
      */
     @PostMapping("/{planId}/invite/refuse")
-    public ResponseEntity<TravelPlanResponse> refuseInvitation(
+    public ResponseEntity<?> refuseInvitation(
             @PathVariable Long planId,
             @AuthenticationPrincipal User user) {
-        TravelPlanResponse response = travelPlanService.refuseInvitation(planId, user);
-        return ResponseEntity.ok(response);
+        try {
+            TravelPlanResponse response = travelPlanService.handleInvitation(planId, user, TravelPlanService.Decision.REFUSE);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
     }
     
     /**
-     * Cancel travel plan (owner only)
+     * Close travel plan (owner only) when status is NEW
      */
-    @PostMapping("/{planId}/cancel")
-    public ResponseEntity<TravelPlanResponse> cancelPlan(
+    @PostMapping("/{planId}/close")
+    public ResponseEntity<?> closePlan(
             @RequestParam String reason,
             @PathVariable Long planId,
             @AuthenticationPrincipal User owner) {
-        TravelPlanResponse response = travelPlanService.cancelPlan(planId, reason, owner);
-        return ResponseEntity.ok(response);
+        try {
+            TravelPlanResponse response = travelPlanService.closePlan(planId, reason, owner);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
     }
     
     /**
      * Start travel plan (owner only)
      */
     @PostMapping("/{planId}/start")
-    public ResponseEntity<TravelPlanResponse> startPlan(
+    public ResponseEntity<?> startPlan(
             @PathVariable Long planId,
             @AuthenticationPrincipal User owner) {
-        TravelPlanResponse response = travelPlanService.startPlan(planId, owner);
-        return ResponseEntity.ok(response);
+        try {
+            TravelPlanResponse response = travelPlanService.startPlan(planId, owner);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
     }
     
     /**
      * Complete travel plan (owner only)
      */
     @PostMapping("/{planId}/complete")
-    public ResponseEntity<TravelPlanResponse> completePlan(
+    public ResponseEntity<?> completePlan(
             @PathVariable Long planId,
             @AuthenticationPrincipal User owner) {
-        TravelPlanResponse response = travelPlanService.completePlan(planId, owner);
-        return ResponseEntity.ok(response);
+        try {
+            TravelPlanResponse response = travelPlanService.completePlan(planId, owner);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
     }
     
     /**
      * Check if user has current plan
      */
     @GetMapping("/check-current")
-    public ResponseEntity<Boolean> userHasCurrentPlan(
+    public ResponseEntity<?> userHasCurrentPlan(
             @AuthenticationPrincipal User user) {
-        boolean hasCurrentPlan = travelPlanService.userHasCurrentPlan(user.getId());
-        return ResponseEntity.ok(hasCurrentPlan);
+        try {
+            boolean hasCurrentPlan = travelPlanService.userHasCurrentPlan(user.getId());
+            return ResponseEntity.ok(hasCurrentPlan);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
     }
 } 

@@ -1,1 +1,28 @@
-1. theme color: F43D65 / F297AB
+1. Register User: Tester AAA(birthday 1990 English)/Tester BBB(birthday 2000 Japanese)
+2. User Login/Logout
+
+3. Use Tester AAA, My Plans - CURRENT tab, Create travel plan
+	(1) public - 
+	(2) private - 
+4. Owner Invite member(liangli5100@gmail.com), send email notification 
+5. Invitee Accept/Refuse invitation
+
+6. Use Tester BBB, looking for travel plan in Discovery(Restriction: NEW, public, not full, age, language, gender restriction)
+7. Apply for the travel plan
+8. Use Tester AAA, Travel Plan owner accept/refuse application; if there are more people have applied or have been invited, after the member number has reached the maximum, automatically reject the others(invite Tester.BBB@gmail.com and liangli5100@gmail.com; login with both these two accounts to see exclusive invitation) green - decided; blue - pending
+
+9. CRON job starts travel plan (Automatically reject all pending invitation： update start date/ modify scheduled time of cron job)
+10. ChatRoom
+11. Poll
+12. Shared Expense
+
+13. CRON job completes travel plan
+14. History tab (view detail)
+
+15. User Profile
+
+
+
+
+
+2. clean code

@@ -8,7 +8,6 @@ import {
   Container,
   Paper,
   TextField,
-  Button,
   Typography,
   Alert,
   Grid,
@@ -29,10 +28,8 @@ import {
   Save
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
-import backgroundImage from '../assets/background.avif';
 import PageHeader from '../components/PageHeader';
 import PageContainer from '../components/PageContainer';
-import DEFAULT_PLAN_COVER_IMAGE from '../config/config'
 
 const CreatePlan = () => {
   const navigate = useNavigate();
@@ -70,6 +67,21 @@ const CreatePlan = () => {
   const categories = [
     'Trip', 'Sports', 'Game', 'Match', 'Event', 'Concert', 'Show', 'Family time'
   ];
+
+  // Mapping function to convert frontend categories to backend format
+  const mapCategoryToBackend = (frontendCategory) => {
+    const categoryMap = {
+      'Trip': 'TRIP',
+      'Sports': 'SPORTS',
+      'Game': 'GAME',
+      'Match': 'MATCH',
+      'Event': 'EVENT',
+      'Concert': 'CONCERT',
+      'Show': 'SHOW',
+      'Family time': 'FAMILY_TIME'
+    };
+    return categoryMap[frontendCategory] || frontendCategory.toUpperCase().replace(/\s+/g, '_');
+  };
   const planTypes = [
     { value: 'PUBLIC', label: 'Public' },
     { value: 'PRIVATE', label: 'Private' }
@@ -87,33 +99,6 @@ const CreatePlan = () => {
     { value: 'OTHER', label: 'Other' }
   ];
 
-  const validationSchema = Yup.object({
-    title: Yup.string()
-      .min(3, 'Title must be at least 3 characters')
-      .max(100, 'Title must be at most 100 characters')
-      .required('Title is required'),
-    description: Yup.string()
-      .min(10, 'Description must be at least 10 characters')
-      .max(1000, 'Description must be at most 1000 characters')
-      .required('Description is required'),
-    startDate: Yup.date()
-      .min(new Date(), 'Start date cannot be in the past')
-      .required('Start date is required'),
-    endDate: Yup.date()
-      .min(Yup.ref('startDate'), 'End date must be after start date')
-      .required('End date is required'),
-    location: Yup.string()
-      .min(2, 'Location must be at least 2 characters')
-      .max(100, 'Location must be at most 100 characters')
-      .required('Location is required'),
-    maxMembers: Yup.number()
-      .min(2, 'Minimum 2 members')
-      .max(20, 'Maximum 20 members')
-      .required('Maximum members is required'),
-    visibility: Yup.string()
-      .oneOf(['PUBLIC', 'PRIVATE'], 'Please select a valid visibility')
-      .required('Visibility is required')
-  });
 
   // Update formik initialValues and validationSchema for all new fields
   const formik = useFormik({
@@ -151,34 +136,36 @@ const CreatePlan = () => {
       accommodation: Yup.string().oneOf(accommodationTypes).required('Type of accommodation is required'),
       maxMembers: Yup.number().min(2, 'Minimum 2 members').max(20, 'Maximum 20 members').required('Maximum members is required'),
       description: Yup.string().min(10, 'Description must be at least 10 characters').max(1000, 'Description must be at most 1000 characters').required('Description is required'),
-      gender: Yup.string().oneOf(genderOptions.map(g => g.value)).required('Gender restriction is required'),
-      ageMin: Yup.number().min(0, 'Minimum age must be at least 0').max(120, 'Minimum age too high').required('Minimum age is required'),
-      ageMax: Yup.number().min(Yup.ref('ageMin'), 'Max age must be greater than min age').max(120, 'Maximum age too high').required('Maximum age is required'),
-      language: Yup.string().oneOf(languages).required('Language is required'),
+      gender: Yup.string().oneOf(genderOptions.map(g => g.value)).notRequired(),
+      ageMin: Yup.number()
+        .transform((value, originalValue) => (originalValue === '' || originalValue === null ? undefined : value))
+        .min(0, 'Minimum age must be at least 0')
+        .max(120, 'Minimum age too high')
+        .notRequired(),
+      ageMax: Yup.number()
+        .transform((value, originalValue) => (originalValue === '' || originalValue === null ? undefined : value))
+        .when('ageMin', (ageMin, schema) =>
+          ageMin !== undefined && ageMin !== null && ageMin !== ''
+            ? schema.min(ageMin, 'Max age must be greater than min age')
+            : schema
+        )
+        .max(120, 'Maximum age too high')
+        .notRequired(),
+      language: Yup.string().oneOf(languages).notRequired(),
       images: Yup.array().max(3, 'You can upload up to 3 images')
     }),
     onSubmit: async (values) => {
       try {
         setError('');
-        console.log(JSON.stringify(values))
-        // return;
         // Create plan data
         const planData = {
           ...values,
-          // id: Date.now().toString(),
           owner: {
             id: user.id,
             firstName: user.firstName,
             lastName: user.lastName,
             profilePicture: user.profilePicture
           },
-          // members: [
-          //   {
-          //     userId: user.id,
-          //     userPlanStatus: 'owned',
-          //     joinedAt: new Date().toISOString()
-          //   }
-          // ],
           status: 'NEW',
           // images now contains array of uploaded file paths (no binary)
           // coverImage: values.images?.[0] || DEFAULT_PLAN_COVER_IMAGE,
@@ -187,18 +174,19 @@ const CreatePlan = () => {
           updatedAt: new Date().toISOString()
         };
 
-        planData.category = planData.category.toLocaleUpperCase();
+        // Map category to backend format (snake_case)
+        planData.category = mapCategoryToBackend(planData.category);
         planData.transportation = planData.transportation.toLocaleUpperCase();
         planData.accommodation = planData.accommodation.toLocaleUpperCase();
 
-        // Save to localStorage
-        // const existingPlans = JSON.parse(localStorage.getItem('plans') || '[]');
-        // existingPlans.push(planData);
-        // localStorage.setItem('plans', JSON.stringify(existingPlans));
-        
-        await travelPlansAPI.createPlan(planData);
+        const createdPlan = await travelPlansAPI.createPlan(planData);
+        const newPlanId = createdPlan?.id || createdPlan?.planId || createdPlan?.data?.id;
 
-        navigate('/my-plans');
+        if (newPlanId) {
+          navigate(`/plan/${newPlanId}`);
+        } else {
+          navigate('/my-plans');
+        }
       } catch (err) {
         setError(err.message || 'Failed to create plan. Please try again.');
       }
@@ -225,6 +213,33 @@ const CreatePlan = () => {
   const handleRemoveImage = (index) => {
     const current = Array.isArray(formik.values.images) ? formik.values.images : [];
     formik.setFieldValue('images', current.filter((_, i) => i !== index));
+  };
+
+  const handleSubmitWithScroll = async (event) => {
+    if (event && typeof event.preventDefault === 'function') {
+      event.preventDefault();
+    }
+    const errors = await formik.validateForm();
+    if (errors && Object.keys(errors).length > 0) {
+      // Mark all errored fields as touched
+      const touchedAll = Object.keys(errors).reduce((acc, key) => {
+        acc[key] = true;
+        return acc;
+      }, {});
+      formik.setTouched(touchedAll, true);
+
+      const firstErrorField = Object.keys(errors)[0];
+      const fieldEl = document.querySelector(`[name="${firstErrorField}"]`) || document.getElementById(firstErrorField);
+      if (fieldEl && typeof fieldEl.scrollIntoView === 'function') {
+        fieldEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (typeof fieldEl.focus === 'function') {
+          fieldEl.focus();
+        }
+      }
+      return;
+    }
+    // No validation errors; proceed with submit
+    formik.handleSubmit();
   };
 
   const handleBack = () => {
@@ -257,20 +272,20 @@ const CreatePlan = () => {
             </Alert>
           )}
 
-          <Box component="form" onSubmit={formik.handleSubmit}>
+          <Box component="form" onSubmit={handleSubmitWithScroll}>
             {/* Plan Detail Section */}
             <Typography variant="h6" sx={{ mb: 2 }}>Plan Details</Typography>
             <TextField fullWidth name="title" label="Plan Title" value={formik.values.title} onChange={formik.handleChange} onBlur={formik.handleBlur} error={formik.touched.title && Boolean(formik.errors.title)} helperText={formik.touched.title && formik.errors.title} sx={{ mb: 3 }} />
             <FormControl fullWidth error={formik.touched.planType && Boolean(formik.errors.planType)} sx={{ mb: 3 }}>
               <InputLabel>Plan Type</InputLabel>
-              <Select name="planType" value={formik.values.planType} onChange={formik.handleChange} onBlur={formik.handleBlur} label="Plan Type">
+              <Select id="planType" name="planType" value={formik.values.planType} onChange={formik.handleChange} onBlur={formik.handleBlur} label="Plan Type">
                 {planTypes.map(opt => <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>)}
               </Select>
               {formik.touched.planType && formik.errors.planType && <FormHelperText>{formik.errors.planType}</FormHelperText>}
             </FormControl>
             <FormControl fullWidth error={formik.touched.category && Boolean(formik.errors.category)} sx={{ mb: 3 }}>
               <InputLabel>Category</InputLabel>
-              <Select name="category" value={formik.values.category} onChange={formik.handleChange} onBlur={formik.handleBlur} label="Category">
+              <Select id="category" name="category" value={formik.values.category} onChange={formik.handleChange} onBlur={formik.handleBlur} label="Category">
                 {categories.map(cat => <MenuItem key={cat} value={cat}>{cat}</MenuItem>)}
               </Select>
               {formik.touched.category && formik.errors.category && <FormHelperText>{formik.errors.category}</FormHelperText>}
@@ -279,7 +294,7 @@ const CreatePlan = () => {
             <TextField fullWidth name="endDate" label="End Date" type="date" InputLabelProps={{ shrink: true }} value={formik.values.endDate} onChange={formik.handleChange} onBlur={formik.handleBlur} error={formik.touched.endDate && Boolean(formik.errors.endDate)} helperText={formik.touched.endDate && formik.errors.endDate} sx={{ mb: 3 }} />
             <FormControl fullWidth error={formik.touched.originCountry && Boolean(formik.errors.originCountry)} sx={{ mb: 3 }}>
               <InputLabel>Origin Country</InputLabel>
-              <Select name="originCountry" value={formik.values.originCountry} onChange={formik.handleChange} onBlur={formik.handleBlur} label="Origin Country">
+              <Select id="originCountry" name="originCountry" value={formik.values.originCountry} onChange={formik.handleChange} onBlur={formik.handleBlur} label="Origin Country">
                 {countries.map(country => <MenuItem key={country} value={country}>{country}</MenuItem>)}
               </Select>
               {formik.touched.originCountry && formik.errors.originCountry && <FormHelperText>{formik.errors.originCountry}</FormHelperText>}
@@ -287,7 +302,7 @@ const CreatePlan = () => {
             <TextField fullWidth name="originCity" label="Origin City" value={formik.values.originCity} onChange={formik.handleChange} onBlur={formik.handleBlur} error={formik.touched.originCity && Boolean(formik.errors.originCity)} helperText={formik.touched.originCity && formik.errors.originCity} sx={{ mb: 3 }} />
             <FormControl fullWidth error={formik.touched.destinationCountry && Boolean(formik.errors.destinationCountry)} sx={{ mb: 3 }}>
               <InputLabel>Destination Country</InputLabel>
-              <Select name="destinationCountry" value={formik.values.destinationCountry} onChange={formik.handleChange} onBlur={formik.handleBlur} label="Destination Country">
+              <Select id="destinationCountry" name="destinationCountry" value={formik.values.destinationCountry} onChange={formik.handleChange} onBlur={formik.handleBlur} label="Destination Country">
                 {countries.map(country => <MenuItem key={country} value={country}>{country}</MenuItem>)}
               </Select>
               {formik.touched.destinationCountry && formik.errors.destinationCountry && <FormHelperText>{formik.errors.destinationCountry}</FormHelperText>}
@@ -295,14 +310,14 @@ const CreatePlan = () => {
             <TextField fullWidth name="destinationCity" label="Destination City" value={formik.values.destinationCity} onChange={formik.handleChange} onBlur={formik.handleBlur} error={formik.touched.destinationCity && Boolean(formik.errors.destinationCity)} helperText={formik.touched.destinationCity && formik.errors.destinationCity} sx={{ mb: 3 }} />
             <FormControl fullWidth error={formik.touched.transportation && Boolean(formik.errors.transportation)} sx={{ mb: 3 }}>
               <InputLabel>Transportation</InputLabel>
-              <Select name="transportation" value={formik.values.transportation} onChange={formik.handleChange} onBlur={formik.handleBlur} label="Transportation">
+              <Select id="transportation" name="transportation" value={formik.values.transportation} onChange={formik.handleChange} onBlur={formik.handleBlur} label="Transportation">
                 {transportationTypes.map(type => <MenuItem key={type} value={type}>{type}</MenuItem>)}
               </Select>
               {formik.touched.transportation && formik.errors.transportation && <FormHelperText>{formik.errors.transportation}</FormHelperText>}
             </FormControl>
             <FormControl fullWidth error={formik.touched.accommodation && Boolean(formik.errors.accommodation)} sx={{ mb: 3 }}>
               <InputLabel>Accommodation</InputLabel>
-              <Select name="accommodation" value={formik.values.accommodation} onChange={formik.handleChange} onBlur={formik.handleBlur} label="Accommodation">
+              <Select id="accommodation" name="accommodation" value={formik.values.accommodation} onChange={formik.handleChange} onBlur={formik.handleBlur} label="Accommodation">
                 {accommodationTypes.map(type => <MenuItem key={type} value={type}>{type}</MenuItem>)}
               </Select>
               {formik.touched.accommodation && formik.errors.accommodation && <FormHelperText>{formik.errors.accommodation}</FormHelperText>}
@@ -341,7 +356,7 @@ const CreatePlan = () => {
             <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>Restrictions</Typography>
             <FormControl fullWidth error={formik.touched.gender && Boolean(formik.errors.gender)} sx={{ mb: 3 }}>
               <InputLabel>Gender</InputLabel>
-              <Select name="gender" value={formik.values.gender} onChange={formik.handleChange} onBlur={formik.handleBlur} label="Gender">
+              <Select id="gender" name="gender" value={formik.values.gender} onChange={formik.handleChange} onBlur={formik.handleBlur} label="Gender">
                 {genderOptions.map(opt => <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>)}
               </Select>
               {formik.touched.gender && formik.errors.gender && <FormHelperText>{formik.errors.gender}</FormHelperText>}
@@ -350,7 +365,7 @@ const CreatePlan = () => {
             <TextField fullWidth name="ageMax" label="Age Max" type="number" value={formik.values.ageMax} onChange={formik.handleChange} onBlur={formik.handleBlur} error={formik.touched.ageMax && Boolean(formik.errors.ageMax)} helperText={formik.touched.ageMax && formik.errors.ageMax} sx={{ mb: 3 }} />
             <FormControl fullWidth error={formik.touched.language && Boolean(formik.errors.language)} sx={{ mb: 3 }}>
               <InputLabel>Language</InputLabel>
-              <Select name="language" value={formik.values.language} onChange={formik.handleChange} onBlur={formik.handleBlur} label="Language">
+              <Select id="language" name="language" value={formik.values.language} onChange={formik.handleChange} onBlur={formik.handleBlur} label="Language">
                 {languages.map(lang => <MenuItem key={lang} value={lang}>{lang}</MenuItem>)}
               </Select>
               {formik.touched.language && formik.errors.language && <FormHelperText>{formik.errors.language}</FormHelperText>}

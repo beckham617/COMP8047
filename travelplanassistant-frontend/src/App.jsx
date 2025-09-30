@@ -31,10 +31,6 @@ const theme = createTheme({
   },
 });
 
-const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? children : <Navigate to="/" replace />;
-};
 
 const AppRoutes = () => {
   const { isAuthenticated } = useAuth();
@@ -53,7 +49,7 @@ const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/" element={<MainLayout />}>
-        <Route index element={<Navigate to="/discovery" replace />} />
+        <Route index element={<Navigate to="/my-plans" replace />} />
         <Route path="discovery" element={<Discovery />} />
         <Route path="my-plans" element={<MyPlans />} />
         <Route path="profile" element={<Profile />} />

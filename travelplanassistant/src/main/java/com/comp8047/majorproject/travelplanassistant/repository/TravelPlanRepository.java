@@ -89,4 +89,12 @@ public interface TravelPlanRepository extends JpaRepository<TravelPlan, Long> {
     
     @Query("SELECT tp FROM TravelPlan tp JOIN tp.userPlanStatuses ups WHERE tp.status IN ('NEW', 'IN_PROGRESS') AND ups.user.id = :userId AND ups.status IN ('OWNED', 'APPLIED', 'APPLIED_ACCEPTED', 'INVITED', 'INVITED_ACCEPTED')")
     List<TravelPlan> getCurrentPlans(@Param("userId") Long userId);
+
+    // Find plans starting today that are still NEW
+    @Query("SELECT tp FROM TravelPlan tp WHERE tp.status = 'NEW' AND DATE(tp.startDate) = CURRENT_DATE")
+    List<TravelPlan> findPlansToStartToday();
+
+    // Find plans ending today that are currently IN_PROGRESS
+    @Query("SELECT tp FROM TravelPlan tp WHERE tp.status = 'IN_PROGRESS' AND DATE(tp.endDate) = CURRENT_DATE")
+    List<TravelPlan> findPlansToCompleteToday();
 } 

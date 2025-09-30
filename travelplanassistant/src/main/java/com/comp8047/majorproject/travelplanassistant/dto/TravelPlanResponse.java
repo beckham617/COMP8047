@@ -1,6 +1,5 @@
 package com.comp8047.majorproject.travelplanassistant.dto;
 
-import com.comp8047.majorproject.travelplanassistant.entity.User;
 import com.comp8047.majorproject.travelplanassistant.entity.TravelPlan;
 import com.comp8047.majorproject.travelplanassistant.entity.UserPlanStatus;
 import java.time.LocalDateTime;
@@ -35,7 +34,9 @@ public class TravelPlanResponse {
     private LocalDateTime cancelledAt;
     private String cancellationReason;
     private Integer currentMemberCount;
+    private List<MemberResponseDTO> members;
     private UserPlanStatus.Status userPlanStatus;
+    private boolean hasCurrentPlan;
 
     public TravelPlanResponse() {}
 
@@ -123,6 +124,13 @@ public class TravelPlanResponse {
     public Integer getCurrentMemberCount() { return currentMemberCount; }
     public void setCurrentMemberCount(Integer currentMemberCount) { this.currentMemberCount = currentMemberCount; }
 
+    public List<MemberResponseDTO> getMembers() { return members; }
+    public void setMembers(List<MemberResponseDTO> members) { this.members = members; }
+
     public UserPlanStatus.Status getUserPlanStatus() { return userPlanStatus; }
     public void setUserPlanStatus(UserPlanStatus.Status userPlanStatus) { this.userPlanStatus = userPlanStatus; }
+
+    public boolean isHasCurrentPlan() { return hasCurrentPlan; }
+    public void setHasCurrentPlan(boolean hasCurrentPlan) { this.hasCurrentPlan = hasCurrentPlan; }
+
 } 

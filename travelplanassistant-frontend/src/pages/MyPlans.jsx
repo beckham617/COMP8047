@@ -1,40 +1,109 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { usersAPI, travelPlansAPI } from '../services/api';
-import {
-  Box,
-  Container,
-  Typography,
-  Card,
-  CardContent,
-  CardMedia,
-  Avatar,
-  Chip,
-  Grid,
-  Paper,
-  Fab,
-  Tabs,
-  Tab,
-  Tooltip
-} from '@mui/material';
+import { travelPlansAPI } from '../services/api';
+import { Box, Container, Typography, Grid, Paper, Fab, Tabs, Tab, Tooltip, Snackbar, Alert } from '@mui/material';
 import {
   Add
 } from '@mui/icons-material';
-import { useAuth } from '../contexts/AuthContext';
-import backgroundImage from '../assets/background.avif';
 import PageHeader from '../components/PageHeader';
 import PageContainer from '../components/PageContainer';
+import PlanCard from '../components/PlanCard';
 
 const MyPlans = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState(0);
   // const [plans, setPlans] = useState([]);
   const [currentPlans, setCurrentPlans] = useState([]);
   const [historyPlans, setHistoryPlans] = useState([]);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
 
   useEffect(() => {
     loadPlans();
+  }, []);
+
+  // Polling for plan updates every 12 seconds to reflect changes in current/history plans
+  useEffect(() => {
+    const pollPlanUpdates = async () => {
+      try {
+        const [currentPlansData, historyPlansData] = await Promise.all([
+          travelPlansAPI.getCurrentPlans() || [],
+          travelPlansAPI.getHistoryPlans() || []
+        ]);
+
+        // Update current plans if there are changes
+        setCurrentPlans(prevCurrent => {
+          if (JSON.stringify(prevCurrent) !== JSON.stringify(currentPlansData)) {
+            const newCurrentIds = new Set(currentPlansData.map(p => p.id));
+            
+            // Check for plans that moved from current to history (completed/cancelled)
+            const movedToHistory = prevCurrent.filter(plan => !newCurrentIds.has(plan.id));
+            
+            if (movedToHistory.length > 0) {
+              console.log('MyPlans: Plans moved to history', { 
+                moved: movedToHistory.length, 
+                planTitles: movedToHistory.map(p => p.title) 
+              });
+              
+              // Show notification for plans moved to history
+              if (movedToHistory.length === 1) {
+                setSnackbarMessage(`Plan "${movedToHistory[0].title}" moved to history`);
+              } else {
+                setSnackbarMessage(`${movedToHistory.length} plans moved to history`);
+              }
+              setSnackbarSeverity('info');
+              setSnackbarOpen(true);
+            }
+            
+            console.log('MyPlans: Current plans updated via polling', { 
+              previous: prevCurrent.length, 
+              current: currentPlansData.length 
+            });
+            return currentPlansData;
+          }
+          return prevCurrent;
+        });
+
+        // Update history plans if there are changes
+        setHistoryPlans(prevHistory => {
+          if (JSON.stringify(prevHistory) !== JSON.stringify(historyPlansData)) {
+            const prevHistoryIds = new Set(prevHistory.map(p => p.id));
+            
+            // Check for plans that moved from history to current (reactivated)
+            const movedToCurrent = historyPlansData.filter(plan => !prevHistoryIds.has(plan.id));
+            
+            if (movedToCurrent.length > 0) {
+              
+              // Show notification for plans moved to current
+              if (movedToCurrent.length === 1) {
+                setSnackbarMessage(`Plan "${movedToCurrent[0].title}" reactivated`);
+              } else {
+                setSnackbarMessage(`${movedToCurrent.length} plans reactivated`);
+              }
+              setSnackbarSeverity('success');
+              setSnackbarOpen(true);
+            }
+            
+            return historyPlansData;
+          }
+          return prevHistory;
+        });
+      } catch (err) {
+        console.error('Failed to poll plan updates:', err);
+      }
+    };
+
+    // Initial poll after a short delay
+    const initialTimeout = setTimeout(pollPlanUpdates, 4000);
+
+    // Set up polling interval
+    const pollInterval = setInterval(pollPlanUpdates, 12000); // Poll every 12 seconds
+
+    return () => {
+      clearTimeout(initialTimeout);
+      clearInterval(pollInterval);
+    };
   }, []);
 
   const loadPlans = useCallback(async ()  => {
@@ -57,114 +126,8 @@ const MyPlans = () => {
     navigate('/create-plan');
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'new':
-        return 'success';
-      case 'in_progress':
-        return 'warning';
-      case 'completed':
-        return 'info';
-      case 'cancelled':
-        return 'error';
-      default:
-        return 'default';
-    }
-  };
 
-  const getUserPlanStatusColor = (status) => {
-    switch (status) {
-      case 'owned':
-        return 'primary';
-      case 'applied':
-        return 'warning';
-      case 'applied_accepted':
-        return 'success';
-      case 'applied_refused':
-        return 'error';
-      case 'applied_cancelled':
-        return 'error';
-      case 'invited':
-        return 'info';
-      case 'invited_accepted':
-        return 'success';
-      case 'invited_refused':
-        return 'error';
-      default:
-        return 'default';
-    }
-  };
 
-  const renderPlanCard = (plan) => {
-    // const userPlan = plan.userPlanStatus.find(member => member.userId === user?.id);
-    
-    return (
-      <Card
-        key={plan.id}
-        sx={{
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          cursor: 'pointer',
-          transition: 'transform 0.2s, box-shadow 0.2s',
-          '&:hover': {
-            transform: 'translateY(-4px)',
-            boxShadow: 4,
-          }
-        }}
-        onClick={() => handlePlanClick(plan.id)}
-      >
-        <CardMedia
-          component="img"
-          height="200"
-          image={(Array.isArray(plan.images) && plan.images.length > 0)
-            ? usersAPI.getProfilePicture(plan.images[0])
-            : 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80'}
-          alt={plan.title}
-          sx={{ width: '100%', height: 200, objectFit: 'cover', objectPosition: 'center' }}
-        />
-        <CardContent sx={{ flexGrow: 1, position: 'relative' }}>
-          <Typography variant="h6" component="h2" gutterBottom>
-            {plan.title}
-          </Typography>
-          
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            {plan.description}
-          </Typography>
-
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-            <Avatar
-              // src={plan.ownerAvatar}
-              src={
-                plan.ownerAvatar 
-                  ? usersAPI.getProfilePicture(plan.ownerAvatar) 
-                  : (plan.ownerAvatar || 'https://via.placeholder.com/150')
-              }
-              sx={{ width: 32, height: 32, mr: 1 }}
-            />
-            <Typography variant="body2" color="text.secondary">
-              {plan.ownerName}
-            </Typography>
-          </Box>
-
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Chip
-              label={plan.userPlanStatus.replace('_', ' ')}
-              color={getStatusColor(plan.userPlanStatus)}
-              size="small"
-            />
-            {/* {userPlan && (
-              <Chip
-                label={userPlan.userPlanStatus.replace('_', ' ')}
-                color={getUserPlanStatusColor(userPlan.userPlanStatus)}
-                size="small"
-              />
-            )} */}
-          </Box>
-        </CardContent>
-      </Card>
-    );
-  };
 
   return (
     <PageContainer>
@@ -229,8 +192,24 @@ const MyPlans = () => {
                 </Tooltip>
               </Box>
             ) : (
-              <Grid container spacing={3}>
-                {currentPlans.map(renderPlanCard)}
+              <Grid container spacing={3} sx={{ alignItems: 'stretch' }}>
+                {currentPlans.map((plan) => (
+                  <Grid 
+                    item 
+                    xs={12} 
+                    sm={6} 
+                    md={4} 
+                    key={plan.id} 
+                    sx={{ 
+                      display: 'flex',
+                      minHeight: '400px',
+                      width: '100%',
+                      maxWidth: '100%'
+                    }}
+                  >
+                    <PlanCard plan={plan} onClick={() => handlePlanClick(plan.id)} />
+                  </Grid>
+                ))}
               </Grid>
             )}
           </Box>
@@ -247,8 +226,24 @@ const MyPlans = () => {
                 </Typography>
               </Box>
             ) : (
-              <Grid container spacing={3}>
-                {historyPlans.map(renderPlanCard)}
+              <Grid container spacing={3} sx={{ alignItems: 'stretch' }}>
+                {historyPlans.map((plan) => (
+                  <Grid 
+                    item 
+                    xs={12} 
+                    sm={6} 
+                    md={4} 
+                    key={plan.id} 
+                    sx={{ 
+                      display: 'flex',
+                      minHeight: '400px',
+                      width: '100%',
+                      maxWidth: '100%'
+                    }}
+                  >
+                    <PlanCard plan={plan} onClick={() => handlePlanClick(plan.id)} />
+                  </Grid>
+                ))}
               </Grid>
             )}
           </Box>
@@ -256,6 +251,22 @@ const MyPlans = () => {
         
         </Paper>
       </Container>
+
+      {/* Notification Snackbar */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={4000}
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={() => setSnackbarOpen(false)} 
+          severity={snackbarSeverity}
+          sx={{ width: '100%' }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </PageContainer>
   );
 };

@@ -8,6 +8,7 @@ export const API_CONFIG = {
 // WebSocket Configuration
 export const WS_CONFIG = {
   BASE_URL: import.meta.env.VITE_WS_URL || 'ws://localhost:8080/api/ws',
+  SOCKJS_URL: import.meta.env.VITE_SOCKJS_URL || 'http://localhost:8080/api/ws',
   RECONNECT_INTERVAL: 5000, // 5 seconds
   MAX_RECONNECT_ATTEMPTS: 5
 };

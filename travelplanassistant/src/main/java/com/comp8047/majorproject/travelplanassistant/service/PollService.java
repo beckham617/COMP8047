@@ -7,8 +7,9 @@ import com.comp8047.majorproject.travelplanassistant.entity.UserPlanStatus;
 import com.comp8047.majorproject.travelplanassistant.repository.PollRepository;
 import com.comp8047.majorproject.travelplanassistant.repository.TravelPlanRepository;
 import com.comp8047.majorproject.travelplanassistant.repository.UserPlanStatusRepository;
-import com.comp8047.majorproject.travelplanassistant.dto.PollCreateRequest;
+import com.comp8047.majorproject.travelplanassistant.dto.PollRequest;
 import com.comp8047.majorproject.travelplanassistant.dto.PollResponse;
+import com.comp8047.majorproject.travelplanassistant.dto.PollVoteResponse;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -36,7 +37,7 @@ public class PollService {
     /**
      * Create a new poll
      */
-    public PollResponse createPoll(Long planId, PollCreateRequest request, User creator) {
+    public PollResponse createPoll(Long planId, PollRequest request, User creator) {
         Optional<TravelPlan> planOpt = travelPlanRepository.findById(planId);
         if (planOpt.isEmpty()) {
             throw new IllegalArgumentException("Travel plan not found");
@@ -71,7 +72,7 @@ public class PollService {
         
         Poll savedPoll = pollRepository.save(poll);
         
-        return convertToResponse(savedPoll);
+        return convertToResponse(savedPoll, creator);
     }
     
     /**
@@ -93,7 +94,7 @@ public class PollService {
         
         List<Poll> polls = pollRepository.findByTravelPlanOrderByCreatedAtDesc(plan);
         return polls.stream()
-                .map(this::convertToResponse)
+                .map(poll -> convertToResponse(poll, user))
                 .collect(Collectors.toList());
     }
     
@@ -116,7 +117,7 @@ public class PollService {
         
         List<Poll> polls = pollRepository.findActivePollsByTravelPlan(plan);
         return polls.stream()
-                .map(this::convertToResponse)
+                .map(poll -> convertToResponse(poll, user))
                 .collect(Collectors.toList());
     }
     
@@ -162,7 +163,7 @@ public class PollService {
         poll.getVotes().add(vote);
         Poll savedPoll = pollRepository.save(poll);
         
-        return convertToResponse(savedPoll);
+        return convertToResponse(savedPoll, user);
     }
     
     /**
@@ -184,7 +185,7 @@ public class PollService {
         poll.setStatus(Poll.PollStatus.CLOSED);
         Poll savedPoll = pollRepository.save(poll);
         
-        return convertToResponse(savedPoll);
+        return convertToResponse(savedPoll, user);
     }
     
     /**
@@ -216,17 +217,19 @@ public class PollService {
     }
     
     /**
-     * Convert Poll to PollResponse
+     * Convert Poll to PollResponse with user vote information
      */
-    private PollResponse convertToResponse(Poll poll) {
+    private PollResponse convertToResponse(Poll poll, User user) {
         PollResponse response = new PollResponse();
         response.setId(poll.getId());
         response.setQuestion(poll.getQuestion());
         
         // Convert PollOption objects to strings
-        List<String> optionTexts = poll.getOptions().stream()
-                .map(Poll.PollOption::getText)
-                .collect(Collectors.toList());
+        Map<Long, String> optionTexts = poll.getOptions().stream()
+                .collect(Collectors.toMap(
+                    Poll.PollOption::getId,
+                    Poll.PollOption::getText
+                ));
         response.setOptions(optionTexts);
         
         response.setCreatorId(poll.getCreatedBy().getId());
@@ -242,6 +245,31 @@ public class PollService {
                     Poll.PollOption::getVoteCount
                 ));
         response.setVoteCounts(voteCounts);
+        
+        // Add user vote information if user is provided
+        if (user != null) {
+            Optional<Poll.PollVote> userVoteOpt = poll.getVotes().stream()
+                    .filter(vote -> vote.getUser().getId().equals(user.getId()))
+                    .findFirst();
+            
+            if (userVoteOpt.isPresent()) {
+                Poll.PollVote vote = userVoteOpt.get();
+                PollVoteResponse voteResponse = new PollVoteResponse(
+                    vote.getId(),
+                    vote.getPollOption().getText(),
+                    vote.getPollOption().getId(),
+                    vote.getVotedAt()
+                );
+                response.setHasUserVoted(true);
+                response.setUserVote(voteResponse);
+            } else {
+                response.setHasUserVoted(false);
+                response.setUserVote(null);
+            }
+        } else {
+            response.setHasUserVoted(false);
+            response.setUserVote(null);
+        }
         
         response.setCreatedAt(poll.getCreatedAt());
         response.setUpdatedAt(poll.getUpdatedAt());

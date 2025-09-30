@@ -23,7 +23,7 @@ const PageContainer = ({ children }) => {
           left: 0,
           width: '100vw',
           height: '100vh',
-          backgroundColor: 'rgba(255, 255, 255, 0.6)',
+          backgroundColor: 'rgba(255, 255, 255, 0.75)',
           zIndex: 0,
           pointerEvents: 'none',
         },

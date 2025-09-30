@@ -10,12 +10,20 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @Repository
 public interface SharedExpenseRepository extends JpaRepository<SharedExpense, Long> {
     
     // Find all expenses for a specific travel plan
     List<SharedExpense> findByTravelPlanOrderByCreatedAtDesc(TravelPlan travelPlan);
+    
+    // Find expenses for a travel plan with pagination
+    Page<SharedExpense> findByTravelPlan(TravelPlan travelPlan, Pageable pageable);
+    
+    // Find all expenses for a specific travel plan (without pagination)
+    List<SharedExpense> findByTravelPlan(TravelPlan travelPlan);
     
     // Find expenses by payer
     List<SharedExpense> findByPaidByOrderByCreatedAtDesc(User paidBy);

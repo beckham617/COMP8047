@@ -15,7 +15,7 @@ const getAuthHeaders = () => {
 };
 
 // Generic API request function with timeout and retry logic
-const apiRequest = async (endpoint, options = {}) => {
+export const apiRequest = async (endpoint, options = {}) => {
   const url = `${API_CONFIG.BASE_URL}${endpoint}`;
   const config = {
     headers: getAuthHeaders(),
@@ -37,21 +37,39 @@ const apiRequest = async (endpoint, options = {}) => {
       clearTimeout(timeoutId);
       
       if (!response.ok) {
+        // Attempt to extract error message from JSON or plain text body
+        const responseClone = response.clone();
         const errorData = await response.json().catch(() => ({}));
-        
+        let errorMessage = errorData && errorData.message ? errorData.message : '';
+        if (!errorMessage) {
+          try {
+            const text = await responseClone.text();
+            if (text && typeof text === 'string') {
+              errorMessage = text;
+            }
+          } catch (_) {
+            // ignore
+          }
+        }
+        if (!errorMessage) {
+          errorMessage = `HTTP error! status: ${response.status}`;
+        }
+
         // Handle specific HTTP status codes
         switch (response.status) {
           case 401:
             localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
-            throw new Error(ERROR_MESSAGES.UNAUTHORIZED);
+            throw new Error(errorMessage || ERROR_MESSAGES.UNAUTHORIZED);
           case 404:
-            throw new Error(ERROR_MESSAGES.NOT_FOUND);
+            throw new Error(errorMessage || ERROR_MESSAGES.NOT_FOUND);
+          case 400:
+            throw new Error(errorMessage || ERROR_MESSAGES.VALIDATION_ERROR);
           case 422:
-            throw new Error(errorData.message || ERROR_MESSAGES.VALIDATION_ERROR);
+            throw new Error(errorMessage || ERROR_MESSAGES.VALIDATION_ERROR);
           case 500:
-            throw new Error(ERROR_MESSAGES.SERVER_ERROR);
+            throw new Error(errorMessage || ERROR_MESSAGES.SERVER_ERROR);
           default:
-            throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+            throw new Error(errorMessage || `HTTP error! status: ${response.status}`);
         }
       }
       
@@ -112,6 +130,11 @@ export const travelPlansAPI = {
     return apiRequest(endpoint);
   },
 
+  // Discovery plans
+  getDiscoveryPlans: async () => {
+    return apiRequest('/travel-plans/discovery');
+  },
+
   // Get current travel plans
   getCurrentPlans: async (filters = {}) => {
     return apiRequest('/travel-plans/current');
@@ -153,6 +176,14 @@ export const travelPlansAPI = {
     });
   },
 
+  // Close travel plan (owner only)
+  closePlan: async (planId, reason) => {
+    const query = `?reason=${encodeURIComponent(reason || '')}`;
+    return apiRequest(`/travel-plans/${planId}/close${query}`, {
+      method: 'POST'
+    });
+  },
+
   // Delete travel plan
   deletePlan: async (planId) => {
     return apiRequest(`/travel-plans/${planId}`, {
@@ -169,45 +200,43 @@ export const travelPlansAPI = {
 
   // Cancel application
   cancelApplication: async (planId) => {
-    return apiRequest(`/travel-plans/${planId}/cancel-application`, {
-      method: 'POST'
+    return apiRequest(`/travel-plans/${planId}/cancel`, {
+      method: 'PUT'
     });
   },
 
   // Accept application
   acceptApplication: async (planId, userId) => {
-    return apiRequest(`/travel-plans/${planId}/accept-application`, {
-      method: 'POST',
-      body: JSON.stringify({ userId })
+    return apiRequest(`/travel-plans/${planId}/applications/${userId}/accept`, {
+      method: 'POST'
     });
   },
 
   // Refuse application
   refuseApplication: async (planId, userId) => {
-    return apiRequest(`/travel-plans/${planId}/refuse-application`, {
-      method: 'POST',
-      body: JSON.stringify({ userId })
+    return apiRequest(`/travel-plans/${planId}/applications/${userId}/reject`, {
+      method: 'POST'
     });
   },
 
   // Invite user to plan
   inviteUser: async (planId, userEmail) => {
-    return apiRequest(`/travel-plans/${planId}/invite`, {
+    return apiRequest(`/travel-plans/${planId}/invite?email=` + userEmail, {
       method: 'POST',
-      body: JSON.stringify({ email: userEmail })
+      // body: JSON.stringify({ email: userEmail })
     });
   },
 
   // Accept invitation
   acceptInvitation: async (planId) => {
-    return apiRequest(`/travel-plans/${planId}/accept-invitation`, {
+    return apiRequest(`/travel-plans/${planId}/invite/accept`, {
       method: 'POST'
     });
   },
 
   // Refuse invitation
   refuseInvitation: async (planId) => {
-    return apiRequest(`/travel-plans/${planId}/refuse-invitation`, {
+    return apiRequest(`/travel-plans/${planId}/invite/refuse`, {
       method: 'POST'
     });
   }
@@ -218,6 +247,11 @@ export const chatAPI = {
   // Get chat messages for a plan
   getMessages: async (planId) => {
     return apiRequest(`/chat/${planId}/messages`);
+  },
+
+  // Get recent chat messages with limit
+  getRecentMessages: async (planId, limit = 100) => {
+    return apiRequest(`/chat/${planId}/messages/recent?limit=${limit}`);
   },
 
   // Send message
@@ -231,24 +265,23 @@ export const chatAPI = {
 
 // Polls API
 export const pollsAPI = {
-  // Get polls for a plan
+  // Get polls for a travel plan
   getPolls: async (planId) => {
-    return apiRequest(`/polls/${planId}`);
+    return apiRequest(`/polls/travel-plans/${planId}`);
   },
 
   // Create new poll
-  createPoll: async (pollData) => {
-    return apiRequest('/polls', {
+  createPoll: async (planId, pollData) => {
+    return apiRequest(`/polls/travel-plans/${planId}`, {
       method: 'POST',
       body: JSON.stringify(pollData)
     });
   },
 
   // Vote on poll
-  vote: async (pollId, optionIndex) => {
-    return apiRequest(`/polls/${pollId}/vote`, {
-      method: 'POST',
-      body: JSON.stringify({ optionIndex })
+  vote: async (pollId, optionId) => {
+    return apiRequest(`/polls/${pollId}/vote?optionId=${optionId}`, {
+      method: 'POST'
     });
   }
 };
@@ -257,20 +290,25 @@ export const pollsAPI = {
 export const expensesAPI = {
   // Get expenses for a plan
   getExpenses: async (planId) => {
-    return apiRequest(`/expenses/${planId}`);
+    return apiRequest(`/shared-expenses/${planId}`);
   },
 
-  // Create new expense
-  createExpense: async (expenseData) => {
-    return apiRequest('/expenses', {
+  // Create new shared expense
+  createSharedExpense: async (planId, expenseData) => {
+    return apiRequest(`/shared-expenses/travel-plans/${planId}`, {
       method: 'POST',
       body: JSON.stringify(expenseData)
     });
   },
 
+  // Get shared expenses for a travel plan
+  getSharedExpensesForPlan: async (travelPlanId) => {
+    return apiRequest(`/shared-expenses/travel-plan/${travelPlanId}`);
+  },
+
   // Mark expense as settled
   settleExpense: async (expenseId) => {
-    return apiRequest(`/expenses/${expenseId}/settle`, {
+    return apiRequest(`/shared-expenses/${expenseId}/settle`, {
       method: 'PUT'
     });
   }

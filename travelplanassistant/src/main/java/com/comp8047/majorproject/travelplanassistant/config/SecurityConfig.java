@@ -39,6 +39,8 @@ public class SecurityConfig {
                 .requestMatchers("/public/**").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                // Permit WebSocket/SockJS handshake endpoints
+                .requestMatchers("/ws/**", "/api/ws/**").permitAll()
                 .anyRequest().authenticated()
             )
             .sessionManagement()

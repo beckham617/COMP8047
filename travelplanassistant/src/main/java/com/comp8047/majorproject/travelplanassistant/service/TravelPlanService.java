@@ -2,6 +2,7 @@ package com.comp8047.majorproject.travelplanassistant.service;
 
 import com.comp8047.majorproject.travelplanassistant.dto.TravelPlanRequest;
 import com.comp8047.majorproject.travelplanassistant.dto.TravelPlanResponse;
+import com.comp8047.majorproject.travelplanassistant.dto.MemberResponseDTO;
 import com.comp8047.majorproject.travelplanassistant.entity.TravelPlan;
 import com.comp8047.majorproject.travelplanassistant.entity.User;
 import com.comp8047.majorproject.travelplanassistant.entity.UserPlanStatus;
@@ -9,14 +10,12 @@ import com.comp8047.majorproject.travelplanassistant.repository.TravelPlanReposi
 import com.comp8047.majorproject.travelplanassistant.repository.UserPlanStatusRepository;
 import com.comp8047.majorproject.travelplanassistant.repository.UserRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -26,6 +25,7 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class TravelPlanService {
+    public enum Decision { ACCEPT, REFUSE }
     
     @Autowired
     private TravelPlanRepository travelPlanRepository;
@@ -38,6 +38,9 @@ public class TravelPlanService {
     
     @Autowired
     private ObjectMapper objectMapper;
+    
+    @Autowired
+    private NotificationService notificationService;
     
     public TravelPlanService(TravelPlanRepository travelPlanRepository, 
     UserPlanStatusRepository userPlanStatusRepository,
@@ -104,11 +107,50 @@ public class TravelPlanService {
      * Get all new public plans (planType = PUBLIC, status = NEW) not associated with the current user
      */
     public List<TravelPlanResponse> getPublicNewPlans(Long userId) {
-        // Find all plans with planType PUBLIC and status NEW, and filter out those where user is already a member
+        // Get current user profile for filtering
+        User currentUser = userRepository.findById(userId).orElse(null);
+
+        // Find all PUBLIC plans with status NEW
         List<TravelPlan> plans = travelPlanRepository.findByPlanTypeAndStatus(TravelPlan.PlanType.PUBLIC, TravelPlan.Status.NEW);
+
         return plans.stream()
-                .filter(plan -> userPlanStatusRepository.findByUserAndTravelPlan(userRepository.findById(userId).orElse(null), plan).isEmpty())
-                .map(plan -> convertToResponse(plan))
+                // Exclude plans where the user already has a relationship/status
+                .filter(plan -> userPlanStatusRepository.findByUserAndTravelPlan(currentUser, plan).isEmpty())
+                // Exclude plans that have reached maxMembers
+                .filter(plan -> !isPlanFull(plan))
+                // Gender restriction: allow ANY/null or match user's gender
+                .filter(plan -> {
+                    if (plan.getGender() == null || plan.getGender() == TravelPlan.GenderPreference.ANY) return true;
+                    if (currentUser == null || currentUser.getGender() == null) return true;
+                    try {
+                        return plan.getGender().name().equalsIgnoreCase(currentUser.getGender().name());
+                    } catch (Exception e) {
+                        return false;
+                    }
+                })
+                // Age restriction: within [ageMin, ageMax] if specified
+                .filter(plan -> {
+                    Integer userAge = currentUser == null ? null : currentUser.getAge();
+                    if (userAge == null) return true;
+                    Integer min = plan.getAgeMin();
+                    Integer max = plan.getAgeMax();
+                    if (min != null && userAge < min) return false;
+                    if (max != null && userAge > max) return false;
+                    return true;
+                })
+                // Language restriction: allow null/blank or exact match (case-insensitive)
+                .filter(plan -> {
+                    String planLang = plan.getLanguage();
+                    if (planLang == null || planLang.isBlank()) return true;
+                    String userLang = currentUser == null ? null : currentUser.getLanguage();
+                    return userLang != null && planLang.equalsIgnoreCase(userLang);
+                })
+                .map(plan -> {
+                    TravelPlanResponse response = convertToResponse(plan);
+                    // Populate members (include pending applications and invitations)
+                    populateMembers(response, plan, true);
+                    return response;
+                })
                 .collect(Collectors.toList());
     }
 
@@ -121,9 +163,15 @@ public class TravelPlanService {
                 .filter(plan -> (plan.getTitle() != null && plan.getTitle().toLowerCase().contains(keyword.toLowerCase()))
                         || (plan.getDescription() != null && plan.getDescription().toLowerCase().contains(keyword.toLowerCase())))
                 .filter(plan -> userPlanStatusRepository.findByUserAndTravelPlan(userRepository.findById(userId).orElse(null), plan).isEmpty())
+                .filter(plan -> !isPlanFull(plan))
                 .collect(Collectors.toList());
         return plans.stream()
-                .map(plan -> convertToResponse(plan))
+                .map(plan -> {
+                    TravelPlanResponse response = convertToResponse(plan);
+                    // Populate members (include pending applications and invitations)
+                    populateMembers(response, plan, true);
+                    return response;
+                })
                 .collect(Collectors.toList());
     }
 
@@ -132,7 +180,16 @@ public class TravelPlanService {
      */
     public List<TravelPlanResponse> getCurrentPlans(Long userId) {
         List<TravelPlan> travelPlans = travelPlanRepository.getCurrentPlans(userId);
-        return travelPlans.stream().map(tp -> convertToResponse(tp)).collect(Collectors.toList());
+        User user = userRepository.findById(userId).orElse(null);
+        return travelPlans.stream().map(plan -> {
+            TravelPlanResponse response = convertToResponse(plan);
+            UserPlanStatus ups = userPlanStatusRepository.findByUserAndTravelPlan(user, plan).orElse(null);
+            
+            // Populate members (include pending applications and invitations)
+            populateMembers(response, plan, true);
+            response.setUserPlanStatus(ups == null ? null : ups.getStatus());
+            return response;
+        }).collect(Collectors.toList());
     }
 
     /**
@@ -142,8 +199,25 @@ public class TravelPlanService {
         User user = userRepository.findById(userId).orElse(null);
         List<UserPlanStatus> userStatuses = userPlanStatusRepository.findByUser(user);
         return userStatuses.stream()
-                .filter(ups -> ups.getTravelPlan().getStatus() == TravelPlan.Status.COMPLETED || ups.getTravelPlan().getStatus() == TravelPlan.Status.CANCELLED)
-                .map(ups -> convertToResponse(ups.getTravelPlan()))
+                .filter(ups -> {
+                    TravelPlan.Status planStatus = ups.getTravelPlan().getStatus();
+                    UserPlanStatus.Status userStatus = ups.getStatus();
+                    
+                    // Only show COMPLETED or CANCELLED plans with specific user statuses
+                    if (planStatus == TravelPlan.Status.COMPLETED || planStatus == TravelPlan.Status.CANCELLED) {
+                        return userStatus == UserPlanStatus.Status.OWNED
+                                || userStatus == UserPlanStatus.Status.APPLIED_ACCEPTED
+                                || userStatus == UserPlanStatus.Status.INVITED_ACCEPTED;
+                    }
+                    return false;
+                })
+                .map(ups -> {
+                    TravelPlanResponse response = convertToResponse(ups.getTravelPlan());
+                    response.setUserPlanStatus(ups == null ? null : ups.getStatus());
+                    // Populate members for history plans (only confirmed members)
+                    populateMembers(response, ups.getTravelPlan(), false);
+                    return response;
+                })
                 .collect(Collectors.toList());
     }
     
@@ -160,7 +234,15 @@ public class TravelPlanService {
         UserPlanStatus userStatus = userPlanStatusRepository.findByUserAndTravelPlan(
                 userRepository.findById(userId).orElse(null), plan).orElse(null);
         
-        return convertToResponse(plan);
+        boolean hasCurrentPlan = travelPlanRepository.userHasCurrentPlan(userId);
+
+        TravelPlanResponse response = convertToResponse(plan);
+        
+        // Populate members (include pending applications and invitations)
+        populateMembers(response, plan, true);
+        response.setUserPlanStatus(userStatus == null ? null : userStatus.getStatus());
+        response.setHasCurrentPlan(hasCurrentPlan);
+        return response;
     }
     
     /**
@@ -184,6 +266,11 @@ public class TravelPlanService {
             throw new IllegalStateException("Plan is not available for application");
         }
         
+        // Check if plan has reached maxMembers
+        if (isPlanFull(plan)) {
+            throw new IllegalStateException("Travel plan has reached maximum number of members");
+        }
+        
         // Check if user already has a status for this plan
         Optional<UserPlanStatus> existingStatus = userPlanStatusRepository.findByUserAndTravelPlan(user, plan);
         if (existingStatus.isPresent()) {
@@ -194,7 +281,11 @@ public class TravelPlanService {
         UserPlanStatus application = new UserPlanStatus(user, plan, UserPlanStatus.Status.APPLIED);
         userPlanStatusRepository.save(application);
         
-        return convertToResponse(plan);
+        TravelPlanResponse response = convertToResponse(plan);
+        
+        // Populate members (include pending applications and invitations)
+        populateMembers(response, plan, true);
+        return response;
     }
     
     /**
@@ -218,79 +309,55 @@ public class TravelPlanService {
             throw new IllegalStateException("Can only cancel pending applications");
         }
         
-        userPlanStatusRepository.delete(userStatus);
-        
-        return convertToResponse(plan);
-    }
-    
-    /**
-     * Accept application to travel plan (owner only)
-     */
-    public TravelPlanResponse acceptApplication(Long planId, Long applicantId, User owner) {
-        Optional<TravelPlan> planOpt = travelPlanRepository.findById(planId);
-        if (planOpt.isEmpty()) {
-            throw new IllegalArgumentException("Travel plan not found");
-        }
-        
-        TravelPlan plan = planOpt.get();
-        
-        // Check if user is owner
-        if (!plan.getOwner().getId().equals(owner.getId())) {
-            throw new IllegalStateException("Only plan owner can accept applications");
-        }
-        
-        User applicant = userRepository.findById(applicantId)
-                .orElseThrow(() -> new IllegalArgumentException("Applicant not found"));
-        
-        Optional<UserPlanStatus> userStatusOpt = userPlanStatusRepository.findByUserAndTravelPlan(applicant, plan);
-        if (userStatusOpt.isEmpty()) {
-            throw new IllegalArgumentException("No application found for this plan");
-        }
-        
-        UserPlanStatus userStatus = userStatusOpt.get();
-        if (userStatus.getStatus() != UserPlanStatus.Status.APPLIED) {
-            throw new IllegalStateException("Can only accept pending applications");
-        }
-        
-        userStatus.setStatus(UserPlanStatus.Status.APPLIED_ACCEPTED);
+        userStatus.setStatus(UserPlanStatus.Status.APPLIED_CANCELLED);
         userPlanStatusRepository.save(userStatus);
         
         return convertToResponse(plan);
     }
     
-    /**
-     * Reject application to travel plan (owner only)
-     */
-    public TravelPlanResponse rejectApplication(Long planId, Long applicantId, User owner) {
+    // Combined accept/reject application handler
+    public TravelPlanResponse handleApplication(Long planId, Long applicantId, User owner, Decision decision) {
         Optional<TravelPlan> planOpt = travelPlanRepository.findById(planId);
         if (planOpt.isEmpty()) {
             throw new IllegalArgumentException("Travel plan not found");
         }
-        
         TravelPlan plan = planOpt.get();
-        
+
         // Check if user is owner
         if (!plan.getOwner().getId().equals(owner.getId())) {
-            throw new IllegalStateException("Only plan owner can reject applications");
+            throw new IllegalStateException("Only plan owner can modify applications");
         }
-        
+
         User applicant = userRepository.findById(applicantId)
                 .orElseThrow(() -> new IllegalArgumentException("Applicant not found"));
-        
-        Optional<UserPlanStatus> userStatusOpt = userPlanStatusRepository.findByUserAndTravelPlan(applicant, plan);
-        if (userStatusOpt.isEmpty()) {
+
+        Optional<UserPlanStatus> userPlanStatusOpt = userPlanStatusRepository.findByUserAndTravelPlan(applicant, plan);
+        if (userPlanStatusOpt.isEmpty()) {
             throw new IllegalArgumentException("No application found for this plan");
         }
-        
-        UserPlanStatus userStatus = userStatusOpt.get();
-        if (userStatus.getStatus() != UserPlanStatus.Status.APPLIED) {
-            throw new IllegalStateException("Can only reject pending applications");
+
+        UserPlanStatus userPlanStatus = userPlanStatusOpt.get();
+        if (userPlanStatus.getStatus() != UserPlanStatus.Status.APPLIED) {
+            throw new IllegalStateException("Can only act on pending applications");
         }
-        
-        userStatus.setStatus(UserPlanStatus.Status.APPLIED_REFUSED);
-        userPlanStatusRepository.save(userStatus);
-        
-        return convertToResponse(plan);
+
+        switch (decision) {
+            case ACCEPT:
+                userPlanStatus.setStatus(UserPlanStatus.Status.APPLIED_ACCEPTED);
+                userPlanStatusRepository.save(userPlanStatus);
+                
+                // Check if maxMembers is reached after accepting this application
+                checkAndHandleMaxMembersReached(plan);
+                break;
+            case REFUSE:
+                userPlanStatus.setStatus(UserPlanStatus.Status.APPLIED_REFUSED);
+                userPlanStatusRepository.save(userPlanStatus);
+                break;
+        }
+
+        TravelPlanResponse response = convertToResponse(plan);
+        populateMembers(response, plan, true);
+        return response;
     }
     
     /**
@@ -309,11 +376,17 @@ public class TravelPlanService {
             throw new IllegalStateException("Only plan owner can send invitations");
         }
         
+        // Check if plan has reached maxMembers
+        if (isPlanFull(plan)) {
+            throw new IllegalStateException("Travel plan has reached maximum number of members");
+        }
+        
         User invitee = userRepository.findByEmail(inviteeEmail)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
         
         // Check if invitee already has a current plan
-        if (travelPlanRepository.userHasCurrentPlan(invitee.getId())) {
+        boolean hasCurrentPlan = travelPlanRepository.userHasCurrentPlan(invitee.getId());
+        if (hasCurrentPlan) {
             throw new IllegalStateException("Invitee already has a current travel plan");
         }
         
@@ -327,67 +400,62 @@ public class TravelPlanService {
         UserPlanStatus invitation = new UserPlanStatus(invitee, plan, UserPlanStatus.Status.INVITED);
         userPlanStatusRepository.save(invitation);
         
-        return convertToResponse(plan);
+        // Send invitation notification email
+        try {
+            notificationService.sendInvitationNotification(invitee, plan, owner);
+        } catch (Exception e) {
+            System.err.println("Failed to send invitation notification to " + invitee.getEmail() + ": " + e.getMessage());
+        }
+        
+        TravelPlanResponse travelPlanResponse = convertToResponse(plan);
+        travelPlanResponse.setHasCurrentPlan(hasCurrentPlan);
+        
+        // Populate members (include pending applications and invitations)
+        populateMembers(travelPlanResponse, plan, true);
+        return travelPlanResponse;
     }
     
-    /**
-     * Accept invitation to travel plan
-     */
-    public TravelPlanResponse acceptInvitation(Long planId, User user) {
+    // Combined accept/refuse invitation handler
+    public TravelPlanResponse handleInvitation(Long planId, User user, Decision decision) {
         Optional<TravelPlan> planOpt = travelPlanRepository.findById(planId);
         if (planOpt.isEmpty()) {
             throw new IllegalArgumentException("Travel plan not found");
         }
-        
         TravelPlan plan = planOpt.get();
+
         Optional<UserPlanStatus> userStatusOpt = userPlanStatusRepository.findByUserAndTravelPlan(user, plan);
-        
         if (userStatusOpt.isEmpty()) {
             throw new IllegalArgumentException("No invitation found for this plan");
         }
-        
+
         UserPlanStatus userStatus = userStatusOpt.get();
         if (userStatus.getStatus() != UserPlanStatus.Status.INVITED) {
-            throw new IllegalStateException("Can only accept pending invitations");
+            throw new IllegalStateException("Can only act on pending invitations");
         }
-        
-        userStatus.setStatus(UserPlanStatus.Status.INVITED_ACCEPTED);
-        userPlanStatusRepository.save(userStatus);
-        
-        return convertToResponse(plan);
-    }
-    
-    /**
-     * Refuse invitation to travel plan
-     */
-    public TravelPlanResponse refuseInvitation(Long planId, User user) {
-        Optional<TravelPlan> planOpt = travelPlanRepository.findById(planId);
-        if (planOpt.isEmpty()) {
-            throw new IllegalArgumentException("Travel plan not found");
+
+        switch (decision) {
+            case ACCEPT:
+                userStatus.setStatus(UserPlanStatus.Status.INVITED_ACCEPTED);
+                userPlanStatusRepository.save(userStatus);
+                
+                // Check if maxMembers is reached after accepting this invitation
+                checkAndHandleMaxMembersReached(plan);
+                break;
+            case REFUSE:
+                userStatus.setStatus(UserPlanStatus.Status.INVITED_REFUSED);
+                userPlanStatusRepository.save(userStatus);
+                break;
         }
-        
-        TravelPlan plan = planOpt.get();
-        Optional<UserPlanStatus> userStatusOpt = userPlanStatusRepository.findByUserAndTravelPlan(user, plan);
-        
-        if (userStatusOpt.isEmpty()) {
-            throw new IllegalArgumentException("No invitation found for this plan");
-        }
-        
-        UserPlanStatus userStatus = userStatusOpt.get();
-        if (userStatus.getStatus() != UserPlanStatus.Status.INVITED) {
-            throw new IllegalStateException("Can only refuse pending invitations");
-        }
-        
-        userStatus.setStatus(UserPlanStatus.Status.INVITED_REFUSED);
-        userPlanStatusRepository.save(userStatus);
-        
-        return convertToResponse(plan);
+
+        TravelPlanResponse response = convertToResponse(plan);
+        populateMembers(response, plan, true);
+        return response;
     }
     
     /**
      * Cancel travel plan (owner only)
      */
-    public TravelPlanResponse cancelPlan(Long planId, String reason, User owner) {
+    public TravelPlanResponse closePlan(Long planId, String reason, User owner) {
         Optional<TravelPlan> planOpt = travelPlanRepository.findById(planId);
         if (planOpt.isEmpty()) {
             throw new IllegalArgumentException("Travel plan not found");
@@ -400,12 +468,22 @@ public class TravelPlanService {
             throw new IllegalStateException("Only plan owner can cancel the plan");
         }
         
+        // Only allow cancel when plan is NEW
+        if (plan.getStatus() != TravelPlan.Status.NEW) {
+            throw new IllegalStateException("Plan can only be closed when status is NEW");
+        }
+        
         plan.setStatus(TravelPlan.Status.CANCELLED);
         plan.setCancelledAt(LocalDateTime.now());
         plan.setCancellationReason(reason);
         travelPlanRepository.save(plan);
         
-        return convertToResponse(plan);
+        // Automatically refuse all pending applications and invitations when plan is closed
+        refuseAllPendingApplicationsAndInvitations(plan);
+        
+        TravelPlanResponse response = convertToResponse(plan);
+        populateMembers(response, plan, true);
+        return response;
     }
     
     /**
@@ -470,6 +548,84 @@ public class TravelPlanService {
     }
     
     /**
+     * Check if travel plan has reached maxMembers and automatically refuse pending applications/invitations
+     */
+    private void checkAndHandleMaxMembersReached(TravelPlan plan) {
+        // Count current active members (OWNED, APPLIED_ACCEPTED, INVITED_ACCEPTED)
+        long activeMemberCount = userPlanStatusRepository.countActiveMembers(plan);
+        
+        // If we've reached maxMembers, automatically refuse all pending applications and invitations
+        if (activeMemberCount >= plan.getMaxMembers()) {
+            refuseAllPendingApplicationsAndInvitations(plan);
+        }
+    }
+    
+    /**
+     * Check if travel plan has reached maxMembers
+     */
+    public boolean isPlanFull(TravelPlan plan) {
+        long activeMemberCount = userPlanStatusRepository.countActiveMembers(plan);
+        return activeMemberCount >= plan.getMaxMembers();
+    }
+    
+    /**
+     * Populate members in TravelPlanResponse
+     */
+    private void populateMembers(TravelPlanResponse response, TravelPlan plan, boolean includePending) {
+        List<UserPlanStatus.Status> allowedStatuses;
+        if (includePending) {
+            // Include pending applications and invitations
+            allowedStatuses = Arrays.asList(
+                    UserPlanStatus.Status.OWNED,
+                    UserPlanStatus.Status.APPLIED,
+                    UserPlanStatus.Status.APPLIED_ACCEPTED,
+                    UserPlanStatus.Status.INVITED,
+                    UserPlanStatus.Status.INVITED_ACCEPTED
+            );
+        } else {
+            // Only include confirmed members
+            allowedStatuses = Arrays.asList(
+                    UserPlanStatus.Status.OWNED,
+                    UserPlanStatus.Status.APPLIED_ACCEPTED,
+                    UserPlanStatus.Status.INVITED_ACCEPTED
+            );
+        }
+
+        List<MemberResponseDTO> members = plan.getUserPlanStatuses().stream()
+                .filter(userPlanStatus -> allowedStatuses.contains(userPlanStatus.getStatus()))
+                .map(userPlanStatus -> new MemberResponseDTO(
+                        userPlanStatus.getUser().getId(),
+                        userPlanStatus.getUser().getFullName(),
+                        userPlanStatus.getUser().getProfilePicture(),
+                        userPlanStatus.getStatus()
+                ))
+                .collect(Collectors.toList());
+
+        response.setMembers(members);
+    }
+    
+    /**
+     * Automatically refuse all pending applications and invitations for a travel plan
+     */
+    private void refuseAllPendingApplicationsAndInvitations(TravelPlan plan) {
+        // Get all pending applications and invitations
+        List<UserPlanStatus> pendingApplications = userPlanStatusRepository.findPendingApplications(plan);
+        List<UserPlanStatus> pendingInvitations = userPlanStatusRepository.findPendingInvitations(plan);
+        
+        // Refuse all pending applications
+        for (UserPlanStatus application : pendingApplications) {
+            application.setStatus(UserPlanStatus.Status.APPLIED_REFUSED);
+            userPlanStatusRepository.save(application);
+        }
+        
+        // Refuse all pending invitations
+        for (UserPlanStatus invitation : pendingInvitations) {
+            invitation.setStatus(UserPlanStatus.Status.INVITED_REFUSED);
+            userPlanStatusRepository.save(invitation);
+        }
+    }
+    
+    /**
      * Convert TravelPlan to TravelPlanResponse
      */
     private TravelPlanResponse convertToResponse(TravelPlan plan) {
@@ -511,7 +667,8 @@ public class TravelPlanService {
         response.setCancelledAt(plan.getCancelledAt());
         response.setCancellationReason(plan.getCancellationReason());
         response.setCurrentMemberCount(plan.getCurrentMemberCount());
-        response.setUserPlanStatus(plan.getUserPlanStatuses().get(0).getStatus());
         return response;
     }
+
+    
 } 

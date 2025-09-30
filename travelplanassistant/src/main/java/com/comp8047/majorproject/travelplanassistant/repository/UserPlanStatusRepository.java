@@ -26,9 +26,10 @@ public interface UserPlanStatusRepository extends JpaRepository<UserPlanStatus, 
     List<UserPlanStatus> findByUser(User user);
     
     /**
-     * Find all user plan statuses by travel plan
+     * Find all user plan statuses by travel plan with user data eagerly loaded
      */
-    List<UserPlanStatus> findByTravelPlan(TravelPlan travelPlan);
+    @Query("SELECT ups FROM UserPlanStatus ups JOIN FETCH ups.user WHERE ups.travelPlan = :travelPlan")
+    List<UserPlanStatus> findByTravelPlan(@Param("travelPlan") TravelPlan travelPlan);
     
     /**
      * Find user plan statuses by status
@@ -206,9 +207,10 @@ public interface UserPlanStatusRepository extends JpaRepository<UserPlanStatus, 
     void deleteByUser(User user);
     
     /**
-     * Find all statuses for a specific travel plan ordered by creation date
+     * Find all statuses for a specific travel plan ordered by creation date with user data eagerly loaded
      */
-    List<UserPlanStatus> findByTravelPlanOrderByCreatedAtDesc(TravelPlan travelPlan);
+    @Query("SELECT ups FROM UserPlanStatus ups JOIN FETCH ups.user WHERE ups.travelPlan = :travelPlan ORDER BY ups.createdAt DESC")
+    List<UserPlanStatus> findByTravelPlanOrderByCreatedAtDesc(@Param("travelPlan") TravelPlan travelPlan);
     
     /**
      * Find all statuses for a specific user ordered by creation date
@@ -221,27 +223,27 @@ public interface UserPlanStatusRepository extends JpaRepository<UserPlanStatus, 
     Optional<UserPlanStatus> findByUserAndTravelPlanAndStatus(User user, TravelPlan travelPlan, UserPlanStatus.Status status);
     
     /**
-     * Find pending applications for a travel plan
+     * Find pending applications for a travel plan with user data eagerly loaded
      */
-    @Query("SELECT ups FROM UserPlanStatus ups WHERE ups.travelPlan = :travelPlan AND ups.status = 'APPLIED'")
+    @Query("SELECT ups FROM UserPlanStatus ups JOIN FETCH ups.user WHERE ups.travelPlan = :travelPlan AND ups.status = 'APPLIED'")
     List<UserPlanStatus> findPendingApplications(@Param("travelPlan") TravelPlan travelPlan);
     
     /**
-     * Find pending invitations for a travel plan
+     * Find pending invitations for a travel plan with user data eagerly loaded
      */
-    @Query("SELECT ups FROM UserPlanStatus ups WHERE ups.travelPlan = :travelPlan AND ups.status = 'INVITED'")
+    @Query("SELECT ups FROM UserPlanStatus ups JOIN FETCH ups.user WHERE ups.travelPlan = :travelPlan AND ups.status = 'INVITED'")
     List<UserPlanStatus> findPendingInvitations(@Param("travelPlan") TravelPlan travelPlan);
     
     /**
-     * Find accepted members for a travel plan
+     * Find accepted members for a travel plan with user data eagerly loaded
      */
-    @Query("SELECT ups FROM UserPlanStatus ups WHERE ups.travelPlan = :travelPlan AND ups.status IN ('OWNED', 'APPLIED_ACCEPTED', 'INVITED_ACCEPTED')")
+    @Query("SELECT ups FROM UserPlanStatus ups JOIN FETCH ups.user WHERE ups.travelPlan = :travelPlan AND ups.status IN ('OWNED', 'APPLIED_ACCEPTED', 'INVITED_ACCEPTED')")
     List<UserPlanStatus> findAcceptedMembers(@Param("travelPlan") TravelPlan travelPlan);
     
     /**
-     * Find all active members for a travel plan
+     * Find all active members for a travel plan with user data eagerly loaded
      */
-    @Query("SELECT ups FROM UserPlanStatus ups WHERE ups.travelPlan = :travelPlan AND ups.status IN ('OWNED', 'APPLIED_ACCEPTED', 'INVITED_ACCEPTED')")
+    @Query("SELECT ups FROM UserPlanStatus ups JOIN FETCH ups.user WHERE ups.travelPlan = :travelPlan AND ups.status IN ('OWNED', 'APPLIED_ACCEPTED', 'INVITED_ACCEPTED')")
     List<UserPlanStatus> findActiveMembers(@Param("travelPlan") TravelPlan travelPlan);
     
     /**

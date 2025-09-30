@@ -1,20 +1,21 @@
 package com.comp8047.majorproject.travelplanassistant.dto;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Map;
 
 public class PollResponse {
     
     private Long id;
     private String question;
-    private List<String> options;
+    private Map<Long, String> options;
     private Long creatorId;
     private String creatorName;
     private String creatorAvatar;
     private Long travelPlanId;
     private Boolean isActive;
     private Map<String, Integer> voteCounts;
+    private PollVoteResponse userVote; // The current user's vote with full details
+    private Boolean hasUserVoted; // Whether the current user has voted on this poll
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     
@@ -38,11 +39,11 @@ public class PollResponse {
         this.question = question;
     }
     
-    public List<String> getOptions() {
+    public Map<Long, String> getOptions() {
         return options;
     }
     
-    public void setOptions(List<String> options) {
+    public void setOptions(Map<Long, String> options) {
         this.options = options;
     }
     
@@ -108,5 +109,21 @@ public class PollResponse {
     
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+    
+    public PollVoteResponse getUserVote() {
+        return userVote;
+    }
+    
+    public void setUserVote(PollVoteResponse userVote) {
+        this.userVote = userVote;
+    }
+    
+    public Boolean getHasUserVoted() {
+        return hasUserVoted;
+    }
+    
+    public void setHasUserVoted(Boolean hasUserVoted) {
+        this.hasUserVoted = hasUserVoted;
     }
 } 

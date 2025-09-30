@@ -6,22 +6,16 @@ import {
   Typography,
   Avatar,
   Paper,
-  Button,
   Grid,
   Divider,
   Fab,
-  Tabs,
-  Tab,
   Tooltip
 } from '@mui/material';
 import {
-  Edit,
-  Logout
-} from '@mui/icons-material';
+  Edit} from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { usersAPI } from '../services/api';
 import { useEffect, useState } from 'react';
-import backgroundImage from '../assets/background.avif';
 import PageHeader from '../components/PageHeader';
 import PageContainer from '../components/PageContainer';
 

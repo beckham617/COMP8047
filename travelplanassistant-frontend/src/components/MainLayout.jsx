@@ -9,7 +9,16 @@ const MainLayout = () => {
 
   const getCurrentValue = () => {
     if (location.pathname.includes('/discovery')) return 0;
-    if (location.pathname.includes('/my-plans')) return 1;
+    if (
+      location.pathname.includes('/my-plans') ||
+      location.pathname.includes('/create-plan') ||
+      location.pathname.includes('/chat/') ||
+      location.pathname.includes('/poll/') ||
+      location.pathname.includes('/create-poll/') ||
+      location.pathname.includes('/expense/') ||
+      location.pathname.includes('/create-expense/') ||
+      (location.pathname.startsWith('/plan/') && !(location.state && location.state.from === 'discovery'))
+    ) return 1;
     if (
       location.pathname === '/profile' ||
       location.pathname === '/edit-profile'

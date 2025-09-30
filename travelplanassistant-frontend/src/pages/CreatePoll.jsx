@@ -7,24 +7,31 @@ import {
   Container,
   Paper,
   TextField,
-  Button,
   Typography,
   IconButton,
   Alert,
-  Grid
+  Snackbar,
+  Fab,
+  Tooltip
 } from '@mui/material';
 import {
-  ArrowBack,
   Add,
-  Delete
+  Delete,
+  Save
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
+import PageHeader from '../components/PageHeader';
+import PageContainer from '../components/PageContainer';
+import { pollsAPI } from '../services/api';
 
 const CreatePoll = () => {
   const { planId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [options, setOptions] = useState(['']);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
 
   const validationSchema = Yup.object({
     question: Yup.string()
@@ -41,38 +48,50 @@ const CreatePoll = () => {
     onSubmit: async (values) => {
       try {
         if (!user) {
-          throw new Error('User not authenticated');
+          setSnackbarMessage('User not authenticated');
+          setSnackbarSeverity('error');
+          setSnackbarOpen(true);
+          return;
         }
 
         // Validate that at least one option is provided
         const validOptions = options.filter(option => option.trim() !== '');
-        if (validOptions.length === 0) {
-          throw new Error('At least one option is required');
+        if (validOptions.length < 2) {
+          setSnackbarMessage('At least two options are required');
+          setSnackbarSeverity('error');
+          setSnackbarOpen(true);
+          return;
         }
 
-        const newPoll = {
-          id: Date.now().toString(),
+        // Create poll using backend API
+        const pollRequest = {
           question: values.question,
-          options: validOptions,
-          votes: [],
-          createdBy: `${user.firstName} ${user.lastName}`,
-          createdAt: new Date().toISOString()
+          options: validOptions
         };
 
-        // Store poll in localStorage
-        const pollsKey = `polls_${planId}`;
-        const existingPolls = JSON.parse(localStorage.getItem(pollsKey) || '[]');
-        localStorage.setItem(pollsKey, JSON.stringify([...existingPolls, newPoll]));
+        await pollsAPI.createPoll(planId, pollRequest);
 
-        navigate(`/poll/${planId}`);
+        setSnackbarMessage('Poll created successfully!');
+        setSnackbarSeverity('success');
+        setSnackbarOpen(true);
+
+        // Navigate after a short delay to show success message
+        setTimeout(() => {
+          navigate(`/poll/${planId}`);
+        }, 1000);
       } catch (err) {
         console.error('Failed to create poll:', err);
+        setSnackbarMessage(err.message || 'Failed to create poll');
+        setSnackbarSeverity('error');
+        setSnackbarOpen(true);
       }
     }
   });
 
-  const handleAddOption = () => {
-    setOptions([...options, '']);
+  const handleAddOption = (index) => {
+    const newOptions = [...options];
+    newOptions.splice(index + 1, 0, ''); // Insert new empty option after the current index
+    setOptions(newOptions);
   };
 
   const handleRemoveOption = (index) => {
@@ -87,60 +106,51 @@ const CreatePoll = () => {
     setOptions(newOptions);
   };
 
+  const handleSnackbarClose = () => {
+    setSnackbarOpen(false);
+  };
+
   return (
-    <Box sx={{ pb: 8 }}>
-      {/* Header */}
-      <Box
-        sx={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          color: 'white',
-          py: 3,
-          px: 2
-        }}
-      >
-        <Container maxWidth="lg">
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-            <IconButton
-              onClick={() => navigate(-1)}
-              sx={{ color: 'white', mr: 2 }}
-            >
-              <ArrowBack />
-            </IconButton>
-            <Typography variant="h5" component="h1" sx={{ fontWeight: 'bold' }}>
-              New Poll
-            </Typography>
-          </Box>
-        </Container>
-      </Box>
+    <PageContainer>
+      <PageHeader title="New Poll" onBack={() => navigate(`/poll/${planId}`)}>
+        <Typography variant="subtitle1" sx={{ mt: 3 }}>
+          Create a poll for your travel group
+        </Typography>
+      </PageHeader>
 
-      {/* Form */}
-      <Container maxWidth="md" sx={{ py: 3 }}>
-        <Paper elevation={3} sx={{ p: 4, borderRadius: 3 }}>
-          <Box component="form" onSubmit={formik.handleSubmit}>
-            <Grid container spacing={3}>
+      <Container maxWidth="md" sx={{ py: 4, position: 'relative', zIndex: 1 }}>
+        <Paper
+          elevation={8}
+          sx={{
+            p: 2,
+            borderRadius: 3,
+            position: 'relative',
+            backgroundColor: 'transparent',
+            zIndex: 1,
+          }}
+        >
+          <Box component="form" onSubmit={formik.handleSubmit} sx={{ p: 2 }}>
+            <Box sx={{ mb: 4 }}>
               {/* Question */}
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  name="question"
-                  label="Poll Question"
-                  multiline
-                  rows={3}
-                  value={formik.values.question}
-                  onChange={formik.handleChange}
-                  onBlur={formik.handleBlur}
-                  error={formik.touched.question && Boolean(formik.errors.question)}
-                  helperText={formik.touched.question && formik.errors.question}
-                />
-              </Grid>
+              <TextField
+                name="question"
+                label="Poll Question"
+                value={formik.values.question}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+                error={formik.touched.question && Boolean(formik.errors.question)}
+                helperText={formik.touched.question && formik.errors.question}
+                sx={{ width: '95%' }}
+              />
+            </Box>
 
+            <Box>
               {/* Options */}
-              <Grid item xs={12}>
                 <Typography variant="h6" gutterBottom>
                   Options
                 </Typography>
                 {options.map((option, index) => (
-                  <Box key={index} sx={{ display: 'flex', gap: 1, mb: 2 }}>
+                  <Box key={index} sx={{ display: 'flex', gap: 1, mb: 2, width: '95%' }}>
                     <TextField
                       fullWidth
                       label={`Option ${index + 1}`}
@@ -148,53 +158,61 @@ const CreatePoll = () => {
                       onChange={(e) => handleOptionChange(index, e.target.value)}
                       placeholder={`Enter option ${index + 1}`}
                     />
-                    {options.length > 1 && (
-                      <IconButton
-                        color="error"
-                        onClick={() => handleRemoveOption(index)}
-                        sx={{ alignSelf: 'center' }}
-                      >
-                        <Delete />
-                      </IconButton>
-                    )}
+                    <IconButton
+                      color="primary"
+                      onClick={() => handleAddOption(index)}
+                      sx={{ alignSelf: 'center' }}
+                    >
+                      <Add />
+                    </IconButton>
+                    <IconButton
+                      color="error"
+                      onClick={() => handleRemoveOption(index)}
+                      sx={{ alignSelf: 'center' }}
+                    >
+                      <Delete />
+                    </IconButton>
                   </Box>
                 ))}
-                <Button
-                  variant="outlined"
-                  startIcon={<Add />}
-                  onClick={handleAddOption}
-                  sx={{ mt: 1 }}
-                >
-                  Add Option
-                </Button>
-              </Grid>
-
-              {/* Submit Button */}
-              <Grid item xs={12}>
-                <Button
-                  type="submit"
-                  fullWidth
-                  variant="contained"
-                  size="large"
-                  disabled={formik.isSubmitting || options.filter(opt => opt.trim() !== '').length === 0}
-                  sx={{
-                    py: 1.5,
-                    fontSize: '1.1rem',
-                    fontWeight: 'bold',
-                    backgroundColor: '#1976d2',
-                    '&:hover': {
-                      backgroundColor: '#1565c0',
-                    }
-                  }}
-                >
-                  {formik.isSubmitting ? 'Creating Poll...' : 'Create Poll'}
-                </Button>
-              </Grid>
-            </Grid>
+            </Box>
           </Box>
         </Paper>
       </Container>
-    </Box>
+
+      {/* Floating Action Button */}
+      <Tooltip title="Create Poll" arrow>
+        <Fab
+          color="primary"
+          aria-label="create poll"
+          onClick={formik.handleSubmit}
+          disabled={formik.isSubmitting || !formik.values.question.trim() || options.filter(opt => opt.trim() !== '').length < 2}
+          sx={{
+            position: 'fixed',
+            bottom: 120,
+            right: 24,
+            backgroundColor: '#f43d65',
+            '&:hover': {
+              backgroundColor: '#f297ab',
+            },
+            zIndex: 1000
+          }}
+        >
+          <Save />
+        </Fab>
+      </Tooltip>
+
+      {/* Snackbar for feedback */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={handleSnackbarClose} severity={snackbarSeverity} sx={{ width: '100%' }}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
+    </PageContainer>
   );
 };
 
