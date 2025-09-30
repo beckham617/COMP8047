@@ -952,7 +952,24 @@ const PlanDetails = () => {
       <Dialog open={closeDialogOpen} onClose={handleCloseCloseDialog} maxWidth="sm" fullWidth>
         <DialogTitle>Close Plan</DialogTitle>
         <DialogContent>
-          <Alert severity="warning" sx={{ mb: 2 }}>
+          <Alert 
+            severity="warning" 
+            sx={{ 
+              mb: 2,
+              '& .MuiAlert-message': {
+                fontSize: '1rem',
+                fontWeight: 200,
+                color: '#ed6c02'
+              },
+              '& .MuiAlert-icon': {
+                fontSize: '1.5rem'
+              },
+              backgroundColor: '#fff3e0',
+              border: '2px solid #ff9800',
+              borderRadius: '8px',
+              boxShadow: '0 2px 8px rgba(255, 152, 0, 0.2)'
+            }}
+          >
             Are you sure you want to close this plan? This action cannot be undone and will notify all members.
           </Alert>
           <TextField
@@ -984,12 +1001,46 @@ const PlanDetails = () => {
         <DialogTitle>Invite Member</DialogTitle>
         <DialogContent>
           {inviteError && (
-            <Alert severity="error" sx={{ mb: 2 }}>
+            <Alert 
+              severity="error" 
+              sx={{ 
+                mb: 2,
+                '& .MuiAlert-message': {
+                  fontSize: '1rem',
+                  fontWeight: 200,
+                  color: '#d32f2f'
+                },
+                '& .MuiAlert-icon': {
+                  fontSize: '1.5rem'
+                },
+                backgroundColor: '#ffebee',
+                border: '2px solid #f44336',
+                borderRadius: '8px',
+                boxShadow: '0 2px 8px rgba(244, 67, 54, 0.2)'
+              }}
+            >
               {inviteError}
             </Alert>
           )}
           {inviteSuccess && (
-            <Alert severity="success" sx={{ mb: 2 }}>
+            <Alert 
+              severity="success" 
+              sx={{ 
+                mb: 2,
+                '& .MuiAlert-message': {
+                  fontSize: '1rem',
+                  fontWeight: 200,
+                  color: '#2e7d32'
+                },
+                '& .MuiAlert-icon': {
+                  fontSize: '1.5rem'
+                },
+                backgroundColor: '#e8f5e8',
+                border: '2px solid #4caf50',
+                borderRadius: '8px',
+                boxShadow: '0 2px 8px rgba(76, 175, 80, 0.2)'
+              }}
+            >
               {inviteSuccess}
             </Alert>
           )}
@@ -1022,7 +1073,25 @@ const PlanDetails = () => {
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
         sx={{ zIndex: 2000 }}
       >
-        <Alert onClose={() => setSnackbarOpen(false)} severity={snackbarSeverity} sx={{ width: '100%' }}>
+        <Alert 
+          onClose={() => setSnackbarOpen(false)} 
+          severity={snackbarSeverity} 
+          sx={{ 
+            width: '100%',
+            '& .MuiAlert-message': {
+              fontSize: '1rem',
+              fontWeight: 200,
+              color: snackbarSeverity === 'error' ? '#d32f2f' : snackbarSeverity === 'success' ? '#2e7d32' : 'inherit'
+            },
+            '& .MuiAlert-icon': {
+              fontSize: '1.5rem'
+            },
+            backgroundColor: snackbarSeverity === 'error' ? '#ffebee' : snackbarSeverity === 'success' ? '#e8f5e8' : 'inherit',
+            border: snackbarSeverity === 'error' ? '2px solid #f44336' : snackbarSeverity === 'success' ? '2px solid #4caf50' : 'none',
+            borderRadius: '8px',
+            boxShadow: snackbarSeverity === 'error' ? '0 2px 8px rgba(244, 67, 54, 0.2)' : snackbarSeverity === 'success' ? '0 2px 8px rgba(76, 175, 80, 0.2)' : 'none'
+          }}
+        >
           {snackbarMessage}
         </Alert>
       </Snackbar>

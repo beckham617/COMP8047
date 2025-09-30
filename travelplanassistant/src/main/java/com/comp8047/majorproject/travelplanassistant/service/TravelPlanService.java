@@ -393,7 +393,22 @@ public class TravelPlanService {
         // Check if invitee already has a status for this plan
         Optional<UserPlanStatus> existingStatus = userPlanStatusRepository.findByUserAndTravelPlan(invitee, plan);
         if (existingStatus.isPresent()) {
-            throw new IllegalStateException("User already has a relationship with this plan");
+            String errorMessage = "";
+            switch (existingStatus.get().getStatus()) {
+                case APPLIED_REFUSED:
+                    errorMessage = "User has already been refused to join the plan";
+                    break;
+                case APPLIED_CANCELLED:
+                    errorMessage = "User has already cancelled the application";
+                    break;
+                case INVITED_REFUSED:
+                    errorMessage = "User has already refused to join the plan";
+                    break;
+                default:
+                    errorMessage = "User already has a relationship with this plan";
+                    break;
+            }
+            throw new IllegalStateException(errorMessage);
         }
         
         // Create invitation
@@ -437,7 +452,6 @@ public class TravelPlanService {
             case ACCEPT:
                 userStatus.setStatus(UserPlanStatus.Status.INVITED_ACCEPTED);
                 userPlanStatusRepository.save(userStatus);
-                
                 // Check if maxMembers is reached after accepting this invitation
                 checkAndHandleMaxMembersReached(plan);
                 break;
