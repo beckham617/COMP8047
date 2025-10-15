@@ -130,8 +130,8 @@ const CreateSharedExpense = () => {
         await expensesAPI.createSharedExpense(planId, sharedExpenseRequest);
         navigate(`/expense/${planId}`);
       } catch (err) {
-        console.error('Failed to create shared expense:', err);
-        alert(err.message || 'Failed to create shared expense');
+        console.error('Failed to create shared expenses:', err);
+        alert(err.message || 'Failed to create shared expenses');
       }
     }
   });
@@ -174,7 +174,7 @@ const CreateSharedExpense = () => {
 
   return (
     <PageContainer>
-      <PageHeader title="New Shared Expense" onBack={() => navigate(`/expense/${planId}`)}>
+      <PageHeader title="New Shared Expenses" onBack={() => navigate(`/expense/${planId}`)}>
         <Typography variant="subtitle1" sx={{ mt: 3 }}>
           Create and split a new expense
         </Typography>

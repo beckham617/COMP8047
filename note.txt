@@ -1,15 +1,27 @@
 1. Register User: Tester AAA(birthday 1990 English)/Tester BBB(birthday 2000 Japanese)
 2. User Login/Logout
 
-3. Use Tester AAA, My Plans - CURRENT tab, Create travel plan
+3. Login Tester AAA, My Plans - CURRENT tab, Create travel plan
 	(1) public - 
-	(2) private - 
+	(2) private - cannot be found in Discovery 
 4. Owner Invite member(liangli5100@gmail.com), send email notification 
+	(1) invitee accepts
+	(2) update status in database to INVITED again
+	(3) invitee refuses
+	(4) invite again to check warning
+	(5) update status back to INVITED
 5. Invitee Accept/Refuse invitation (Different warning for unsuccessful invitation: APPLIED_REFUSED/APPLIED_CANCELLED/INVITED_REFUSED)
 
 6. Use Tester BBB, looking for travel plan in Discovery(Restriction: NEW, public, not full, age, language, gender restriction)
 7. Apply for the travel plan
-8. Use Tester AAA, Travel Plan owner accept/refuse application; if there are more people have applied or have been invited, after the member number has reached the maximum, automatically reject the others(invite Tester.BBB@gmail.com and liangli5100@gmail.com; login with both these two accounts to see exclusive invitation) green - decided; blue - pending;
+8. Use Tester AAA, Travel Plan owner accept/refuse application; 
+	(1) owner accepts
+	(2) update status to APPLIED
+	(3) owner refuses
+	(4) check Tester BBB my Current plan panel
+	(5) update status to APPLIED_ACCEPTED
+if there are more people have applied or have been invited, after the member number has reached the maximum, automatically reject the others(invite Tester.BBB@gmail.com and liangli5100@gmail.com; login with both these two accounts to see exclusive invitation) 
+green - ACCEPTED; blue - INVITED; orange - APPLIED
 
 9. CRON job starts travel plan (Automatically reject all pending invitation： update start date/ modify scheduled time of cron job)
 10. ChatRoom
@@ -26,3 +38,58 @@
 
 
 2. clean code
+
+
+
+
+
+Key Features of the Manual:
+1. Detailed User Plan Status Scenarios
+Complete explanation of all 8 user plan status values
+Clear scenarios for when users have/don't have current plans
+Discovery page restrictions and eligibility criteria
+2. Step-by-Step Workflow
+Following your requested sequence:
+User registration (Tester AAA/BBB)
+Login/logout process
+Creating travel plans (public/private)
+Inviting members with email notifications
+Handling invitations (accept/refuse with different warning scenarios)
+Discovery page usage and plan applications
+Owner accepting/refusing applications
+CRON job automatic plan start
+Chat room, polls, and shared expenses
+CRON job plan completion
+History tab viewing
+User profile management
+3. Comprehensive Status Explanations
+Current Plan Scenarios: When users can/cannot apply to new plans
+Discovery Restrictions: Age, language, gender, and availability filters
+Member Management: Active vs pending vs inactive members
+Status Transitions: How plans move through NEW → IN_PROGRESS → COMPLETED
+4. Technical Details
+Email notification system
+Real-time polling mechanisms
+WebSocket chat functionality
+CRON job scheduling (twice daily)
+Automatic rejection of pending applications when plans start
+5. Troubleshooting Section
+Common error messages and solutions
+Status color coding explanations
+Best practices for optimal usage
+
+
+
+
+
+Questions
+1. What's the main difference between proposal and final report?
+2. Do I need to follow the rule strictly from guide?
+2. What sections do i need to add?
+3. Do i need to include changelog from proposal in major project?
+
+
+
+## 🧪 **Unit Testing Technologies - Brief Overview**
+
+The Travel Plan Assistant project utilizes a modern Java testing stack built around JUnit 5 as the core testing framework, enhanced with Mockito for creating mock objects and isolating dependencies. The testing infrastructure leverages Spring Boot Test for seamless integration with Spring components, including Spring Security Test for authentication testing and Spring Web Test with MockMvc for REST API endpoint validation. For database testing, the project uses H2 in-memory database to provide fast, isolated integration tests without external dependencies. This technology combination enables comprehensive unit testing with 57 test methods across 9 test classes, following the Arrange-Act-Assert pattern with mock-based isolation for reliable, maintainable, and fast-executing tests that ensure high code quality and robust error handling throughout the application.

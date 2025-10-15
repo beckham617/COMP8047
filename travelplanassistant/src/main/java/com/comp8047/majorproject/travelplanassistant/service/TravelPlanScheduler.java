@@ -23,8 +23,7 @@ public class TravelPlanScheduler {
     private NotificationService notificationService;
 
     // Run twice a day at 01:00 and 13:00 server time
-    // @Scheduled(cron = "0 0 1,13 * * *")
-    @Scheduled(cron = "0 07 18 * * *")
+    @Scheduled(cron = "0 0 1,13 * * *")
     public void startPlansForToday() {
         List<TravelPlan> plans = travelPlanRepository.findPlansToStartToday();
         for (TravelPlan plan : plans) {
@@ -66,8 +65,7 @@ public class TravelPlanScheduler {
     }
 
     // Run twice a day at 01:10 and 13:10 server time
-    // @Scheduled(cron = "0 10 1,13 * * *")
-    @Scheduled(cron = "0 00 14 * * *")
+    @Scheduled(cron = "0 10 1,13 * * *")
     public void completePlansForToday() {
         List<TravelPlan> plans = travelPlanRepository.findPlansToCompleteToday();
         for (TravelPlan plan : plans) {

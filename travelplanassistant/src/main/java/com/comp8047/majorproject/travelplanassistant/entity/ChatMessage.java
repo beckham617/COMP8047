@@ -5,8 +5,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Table(name = "chat_messages")
@@ -55,9 +53,6 @@ public class ChatMessage {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
     
-    // Relationships for read receipts
-    @OneToMany(mappedBy = "chatMessage", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<MessageReadReceipt> readReceipts = new ArrayList<>();
     
     // Constructors
     public ChatMessage() {
@@ -182,13 +177,6 @@ public class ChatMessage {
         this.deletedAt = deletedAt;
     }
     
-    public List<MessageReadReceipt> getReadReceipts() {
-        return readReceipts;
-    }
-    
-    public void setReadReceipts(List<MessageReadReceipt> readReceipts) {
-        this.readReceipts = readReceipts;
-    }
     
     // Helper methods
     public boolean isTextMessage() {
@@ -207,14 +195,6 @@ public class ChatMessage {
         return isDeleted;
     }
     
-    public int getReadCount() {
-        return readReceipts.size();
-    }
-    
-    public boolean isReadByUser(User user) {
-        return readReceipts.stream()
-                .anyMatch(receipt -> receipt.getUser().getId().equals(user.getId()));
-    }
     
     @PreUpdate
     protected void onUpdate() {
@@ -224,69 +204,5 @@ public class ChatMessage {
     // Message type enum
     public enum MessageType {
         TEXT, SYSTEM, NOTIFICATION
-    }
-    
-    // Inner class for read receipts
-    @Entity
-    @Table(name = "message_read_receipts")
-    public static class MessageReadReceipt {
-        
-        @Id
-        @GeneratedValue(strategy = GenerationType.IDENTITY)
-        private Long id;
-        
-        @ManyToOne(fetch = FetchType.LAZY)
-        @JoinColumn(name = "message_id", nullable = false)
-        private ChatMessage chatMessage;
-        
-        @ManyToOne(fetch = FetchType.LAZY)
-        @JoinColumn(name = "user_id", nullable = false)
-        private User user;
-        
-        @Column(name = "read_at", nullable = false)
-        private LocalDateTime readAt;
-        
-        public MessageReadReceipt() {
-            this.readAt = LocalDateTime.now();
-        }
-        
-        public MessageReadReceipt(ChatMessage chatMessage, User user) {
-            this();
-            this.chatMessage = chatMessage;
-            this.user = user;
-        }
-        
-        // Getters and Setters
-        public Long getId() {
-            return id;
-        }
-        
-        public void setId(Long id) {
-            this.id = id;
-        }
-        
-        public ChatMessage getChatMessage() {
-            return chatMessage;
-        }
-        
-        public void setChatMessage(ChatMessage chatMessage) {
-            this.chatMessage = chatMessage;
-        }
-        
-        public User getUser() {
-            return user;
-        }
-        
-        public void setUser(User user) {
-            this.user = user;
-        }
-        
-        public LocalDateTime getReadAt() {
-            return readAt;
-        }
-        
-        public void setReadAt(LocalDateTime readAt) {
-            this.readAt = readAt;
-        }
     }
 } 

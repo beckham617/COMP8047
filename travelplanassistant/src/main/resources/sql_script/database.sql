@@ -96,15 +96,6 @@ CREATE TABLE chat_messages (
     FOREIGN KEY (travel_plan_id) REFERENCES travel_plans(id)
 );
 
--- MESSAGE READ RECEIPTS TABLE
-CREATE TABLE message_read_receipts (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    message_id BIGINT NOT NULL,
-    user_id BIGINT NOT NULL,
-    read_at DATETIME NOT NULL,
-    FOREIGN KEY (message_id) REFERENCES chat_messages(id),
-    FOREIGN KEY (user_id) REFERENCES users(id)
-);
 
 -- POLLS TABLE
 CREATE TABLE polls (
@@ -183,7 +174,6 @@ CREATE TABLE expense_allocations (
 
 
 drop table chat_messages;
-drop table message_read_receipts;
 drop table poll_votes;
 drop table poll_options;
 drop table polls;
