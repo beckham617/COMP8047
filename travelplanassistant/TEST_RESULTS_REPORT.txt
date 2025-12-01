@@ -1,0 +1,240 @@
+================================================================================
+                    UNIT TEST EXECUTION REPORT
+                    Travel Plan Assistant Project
+================================================================================
+
+Test Execution Date: 2025-10-14
+Test Framework: JUnit 5 (Jupiter)
+Build Tool: Maven
+Java Version: 19.0.2
+Operating System: Windows 11
+
+================================================================================
+                            EXECUTIVE SUMMARY
+================================================================================
+
+Total Test Classes: 8
+Total Tests Executed: 46
+Total Tests Passed: 46
+Total Tests Failed: 0
+Total Tests with Errors: 0
+Total Tests Skipped: 0
+
+Success Rate: 100%
+Overall Status: ALL TESTS PASSED ✓
+
+Total Execution Time: ~11.1 seconds
+
+================================================================================
+                    DETAILED TEST RESULTS BY CLASS
+================================================================================
+
+1. SharedExpenseServiceTest
+   ----------------------------------------------------------------------------
+   Tests Run: 3
+   Failures: 0
+   Errors: 0
+   Skipped: 0
+   Time Elapsed: 0.087 seconds
+   
+   Test Cases:
+   ✓ testCreateSharedExpense_Success (0.018s)
+   ✓ testCreateSharedExpense_PlanNotFound (0.061s)
+   ✓ testCreateSharedExpense_UserNotMember (0.005s)
+   
+   Status: PASSED ✓
+
+2. ChatServiceTest
+   ----------------------------------------------------------------------------
+   Tests Run: 6
+   Failures: 0
+   Errors: 0
+   Skipped: 0
+   Time Elapsed: 1.586 seconds
+   
+   Test Cases:
+   ✓ testSendMessage_Success (0.010s)
+   ✓ testSendMessage_PlanNotFound (1.512s)
+   ✓ testSendMessage_UserNotMember (0.005s)
+   ✓ testGetMessages_Success (0.011s)
+   ✓ testGetMessages_PlanNotFound (0.008s)
+   ✓ testGetMessages_UserNotMember (0.006s)
+   
+   Status: PASSED ✓
+
+3. NotificationServiceTest
+   ----------------------------------------------------------------------------
+   Tests Run: 1
+   Failures: 0
+   Errors: 0
+   Skipped: 0
+   Time Elapsed: 0.122 seconds
+   
+   Test Cases:
+   ✓ testSendInvitationNotification_Success (0.119s)
+   
+   Status: PASSED ✓
+
+4. PollServiceTest
+   ----------------------------------------------------------------------------
+   Tests Run: 5
+   Failures: 0
+   Errors: 0
+   Skipped: 0
+   Time Elapsed: 0.098 seconds
+   
+   Test Cases:
+   ✓ testCreatePoll_Success (0.005s)
+   ✓ testCreatePoll_PlanNotFound (0.005s)
+   ✓ testCreatePoll_UserNotMember (0.059s)
+   ✓ testCreatePoll_InvalidOptions (0.018s)
+   ✓ testVoteOnPoll_Success (0.009s)
+   
+   Status: PASSED ✓
+
+5. TravelPlanSchedulerTest
+   ----------------------------------------------------------------------------
+   Tests Run: 4
+   Failures: 0
+   Errors: 0
+   Skipped: 0
+   Time Elapsed: 0.107 seconds
+   
+   Test Cases:
+   ✓ testStartPlans_Success (0.087s)
+   ✓ testStartPlans_NoPlansToStart (0.006s)
+   ✓ testCompletePlans_Success (0.004s)
+   ✓ testCompletePlans_NoPlansToComplete (0.004s)
+   
+   Status: PASSED ✓
+
+6. TravelPlanServiceTest
+   ----------------------------------------------------------------------------
+   Tests Run: 16
+   Failures: 0
+   Errors: 0
+   Skipped: 0
+   Time Elapsed: 0.519 seconds
+   
+   Test Cases:
+   ✓ testCreateTravelPlan_Success (0.003s)
+   ✓ testCreateTravelPlan_InvalidDateRange (0.005s)
+   ✓ testCreateTravelPlan_InvalidMaxMembers (0.004s)
+   ✓ testApplyToPlan_Success (0.003s)
+   ✓ testApplyToPlan_PlanNotFound (0.003s)
+   ✓ testApplyToPlan_AlreadyApplied (0.004s)
+   ✓ testAcceptApplication_Success (0.438s)
+   ✓ testRefuseApplication_Success (0.003s)
+   ✓ testInviteUser_Success (0.009s)
+   ✓ testInviteUser_NotOwner (0.005s)
+   ✓ testAcceptInvitation_Success (0.002s)
+   ✓ testRefuseInvitation_Success (0.003s)
+   ✓ testGetCurrentPlans_Success (0.005s)
+   ✓ testGetHistoryPlans_Success (0.005s)
+   ✓ testGetPublicNewPlans_Success (0.010s)
+   ✓ testSearchPublicPlans_Success (0.006s)
+   
+   Status: PASSED ✓
+   
+   Note: One test (testInviteUser_Success) generated a warning about null 
+   notificationService, but the test still passed as expected behavior was 
+   verified.
+
+7. UserServiceTest
+   ----------------------------------------------------------------------------
+   Tests Run: 10
+   Failures: 0
+   Errors: 0
+   Skipped: 0
+   Time Elapsed: 0.059 seconds
+   
+   Test Cases:
+   ✓ testRegisterUser_Success (0.002s)
+   ✓ testRegisterUser_EmailAlreadyExists (0.004s)
+   ✓ testGetUserById_Success (0.001s)
+   ✓ testGetUserById_UserNotFound (0.003s)
+   ✓ testGetUserByEmail_Success (0.002s)
+   ✓ testGetUserByEmail_UserNotFound (0.003s)
+   ✓ testGetAllUsers_Success (0.002s)
+   ✓ testUpdateUserProfile_Success (0.028s)
+   ✓ testUpdateUserProfile_UserNotFound (0.004s)
+   ✓ testUpdateLastLogin_Success (0.002s)
+   
+   Status: PASSED ✓
+
+8. TravelplanassistantApplicationTests
+   ----------------------------------------------------------------------------
+   Tests Run: 1
+   Failures: 0
+   Errors: 0
+   Skipped: 0
+   Time Elapsed: 8.472 seconds
+   
+   Test Cases:
+   ✓ contextLoads (0.015s)
+   
+   Status: PASSED ✓
+   
+   Note: This is an integration test that loads the Spring application context.
+   The longer execution time is expected as it initializes the full application.
+
+================================================================================
+                        TEST COVERAGE SUMMARY
+================================================================================
+
+Service Layer Tests:
+- SharedExpenseService: 3 tests covering expense creation and validation
+- ChatService: 6 tests covering message sending and retrieval
+- NotificationService: 1 test covering notification functionality
+- PollService: 5 tests covering poll creation and voting
+- TravelPlanScheduler: 4 tests covering plan scheduling
+- TravelPlanService: 16 tests covering comprehensive plan management
+- UserService: 10 tests covering user management operations
+
+Application Tests:
+- Spring Context Loading: 1 test verifying application startup
+
+Total Test Coverage: 46 unit tests across 8 test classes
+
+================================================================================
+                        TEST EXECUTION DETAILS
+================================================================================
+
+Test Execution Command: mvn clean test
+Test Framework: JUnit Jupiter 5.10.3
+Mocking Framework: Mockito 5.11.0
+Build System: Maven Surefire Plugin
+
+Test Environment:
+- Java Version: 19.0.2
+- Java VM: Java HotSpot(TM) 64-Bit Server VM
+- Operating System: Windows 11 (10.0)
+- Architecture: amd64
+- Timezone: America/Vancouver
+- Encoding: UTF-8
+
+Test Reports Location: target/surefire-reports/
+
+================================================================================
+                            CONCLUSION
+================================================================================
+
+All 46 unit tests have been successfully executed and passed. The test suite
+demonstrates comprehensive coverage of the service layer functionality including:
+
+✓ User management and authentication
+✓ Travel plan creation and management
+✓ Shared expense tracking
+✓ Poll creation and voting
+✓ Chat messaging functionality
+✓ Notification services
+✓ Scheduled plan status updates
+
+The tests validate both success scenarios and error handling, ensuring robust
+application behavior. All tests completed without failures, errors, or skipped
+tests, indicating a stable and well-tested codebase.
+
+================================================================================
+                        END OF TEST REPORT
+================================================================================
+
